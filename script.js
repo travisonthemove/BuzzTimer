@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reference to the timer container (which has tabindex="-1" in HTML)
     const timerContainer = document.getElementById('timerContainer');
+// Dark Mode Toggle
+const darkModeToggle = document.getElementById('darkModeToggle');
+
 
     // Timer Variables
     let timerInterval;
@@ -429,4 +432,9 @@ shareModalBackdrop.addEventListener('click', (event) => {
             toggleModal(false);
         }
     });
-});
+// Dark Light Toggle
+darkModeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('darkModeToggle');
+    const isDark = document.body.classList.contains('darkModeToggle');
+    darkModeToggle.innerHTML = isDark ? '🌙' : '☀️';
+});});
