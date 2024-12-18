@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BuzzTimer - Track your buzz like a pro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <img src="static/icons/logo.svg" alt="BuzzTimer Logo" style="width: 60px; height: 60px; margin: 0 auto; display: block;">
+        <h1>BuzzTimer</h1>
+        <p class="tagline">Track your buzz like a pro</p>
+
+        <!-- Theme Container -->
+
+        <div class="theme-container">
+<!-- Theme Toggle Button -->
+<button id="themeToggle" class="theme-toggle" aria-label="Change Theme">
+    🎨
+</button>
+            <!-- Timer Section -->
+    <div class="timer-container" id="timerContainer" tabindex="-1">
+                <img src="static/skins/classic.svg" alt="Timer Skin" class="timer-skin" id="timerSkin">
+                <div class="timer-display" id="timer">00:00</div>
+            </div>
+
+            <!-- Upper Controls -->
+            <div class="upper-controls">
+                <button id="startBtn" class="control-btn">Start Timer</button>
+                <button id="resetBtn" class="control-btn">Reset Timer</button>
+                <button id="sessionBtn" class="control-btn">Session Info</button>
+            </div>
+
+            <!-- Lower Controls -->
+            <div class="lower-controls">
+                <button id="logBtn" class="control-btn">Log</button>
+                <button id="highIdeaBtn" class="control-btn">High Idea</button>
+                <button id="distractMeBtn" class="control-btn">Distract Me</button>
+            </div>
+        </div>
+
+        <!-- Skin Selector Section -->
+<div id="skinSelector" class="hidden" tabindex="-1">            
+<h3>Select Timer Theme</h3>
+            <div class="skin-options">
+                <div class="skin-option active" data-skin="classic" data-name="Classic">
+                    <img src="static/skins/classic.svg" alt="Classic Theme">
+                </div>
+                <div class="skin-option" data-skin="calm" data-name="Calm">
+                    <img src="static/skins/calm.svg" alt="Calm Theme">
+                </div>
+                <div class="skin-option" data-skin="retro" data-name="Retro">
+                    <img src="static/skins/retro.svg" alt="Retro Theme">
+                </div>
+                <div class="skin-option" data-skin="partyvibe" data-name="Party Vibe">
+                    <img src="static/skins/partyvibe.svg" alt="Party Vibe Theme">
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme Toggle Button -->
+        <button class="theme-button" id="themeToggle">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+            </svg>
+            Change Theme
+        </button>
+
+        <!-- Session Banner and Details -->
+        <div class="session-banner" id="sessionBanner">
+            <p>
+                Want to add more details to your session?
+                <button id="expandSessionBtn">Expand</button>
+            </p>
+        </div>
+
+        <div class="session-details hidden" id="sessionDetails">
+            <h3>
+                <img src="static/icons/session.svg" alt="" style="width: 24px; height: 24px;">
+                Session Details
+            </h3>
+            <div class="session-form">
+                <div class="form-group">
+                    <label for="productName">Product Name</label>
+                    <input type="text" id="productName" placeholder="e.g., Blue Dream">
+                </div>
+                <div class="form-group">
+                    <label for="consumptionMethod">Consumption Method</label>
+                    <select id="consumptionMethod">
+                        <option value="">Select method...</option>
+                        <option value="Flower">Flower</option>
+                        <option value="Vape">Vape</option>
+                        <option value="Edible">Edible</option>
+                        <option value="Concentrate">Concentrate</option>
+                        <option value="Tincture">Tincture</option>
+                        <option value="Topical">Topical</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="doseAmount">Dose</label>
+                    <div class="dose-wrapper">
+                        <input type="number" id="doseAmount" min="0" step="0.1">
+                        <select id="doseUnit">
+                            <option value="mg">mg</option>
+                            <option value="g">g</option>
+                            <option value="ml">ml</option>
+                            <option value="puffs">puffs</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button id="saveSessionDetailsBtn">Save</button>
+        </div>
+
+        <div class="session-summary hidden" id="sessionSummary"></div>
+
+        <!-- Log Modal -->
+        <div id="logModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Log Moment</h2>
+                <div class="form-group">
+                    <label for="momentInput">Enter or select an effect:</label>
+                    <input type="text" id="momentInput" list="effectsList" placeholder="📝 Custom moment or scroll down for options">
+                    <datalist id="effectsList">
+                        <option value="🧘 Mellow Relaxation"></option>
+                        <option value="😂 Euphoric Giddiness"></option>
+                        <option value="💡 Creative Spark"></option>
+                        <option value="🎯 Heightened Focus"></option>
+                        <option value="🤔 Mindful Reflection"></option>
+                        <option value="🎶 Sensory Boost"></option>
+                        <option value="🛋️ Cozy Couch-Lock"></option>
+                        <option value="☀️ Uplifting Energy"></option>
+                        <option value="🍔 Taste Explorer (Munchies)"></option>
+                        <option value="😴 Tranquil Sleepiness"></option>
+                        <option value="💓 Nervous Heart Palpitations"></option>
+                        <option value="😰 Waves of Panic"></option>
+                        <option value="😟 Paranoid Thoughts"></option>
+                        <option value="✨😳 Indescribable Sparkly Stillness"></option>
+                    </datalist>
+                </div>
+                <button id="saveLogMoment">Save</button>
+            </div>
+        </div>
+
+        <div class="logs hidden">
+    <h2>Logged Moments</h2>
+    <div id="logList" tabindex="0"></div>
+</div>
+
+        <!-- High Idea Modal -->
+        <div id="highIdeaModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Document Your High Idea</h2>
+                <div class="rich-text-controls">
+                    <button onclick="formatText('bold')"><b>B</b></button>
+                    <button onclick="formatText('italic')"><i>I</i></button>
+                    <button onclick="formatText('underline')"><u>U</u></button>
+                </div>
+                <div id="richTextEditor" contenteditable="true" class="rich-text-editor"></div>
+                <button id="saveHighIdea">Save Idea</button>
+            </div>
+        </div>
+
+        <!-- Entertainment Modal -->
+        <div id="entertainmentModal" class="modal entertainment-modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Entertainment Zone</h2>
+                <div class="entertainment-links">
+                    <a href="https://highdeas.com/" target="_blank" class="entertainment-link">
+                        <h4>HighDeas</h4>
+                        <p>Share and explore creative thoughts and ideas from the community.</p>
+                    </a>
+                    <a href="https://radio.garden/visit/whitesburg-ky/kDMlR3nu" target="_blank" class="entertainment-link">
+                        <h4>Radio Garden</h4>
+                        <p>Explore live radio stations from around the globe on an interactive 3D Earth.</p>
+                    </a>
+                    <a href="https://permadi.com/java/spaint/spaint.html#google_vignette" target="_blank" class="entertainment-link">
+                        <h4>Kaleidoscope Painter</h4>
+                        <p>Create mesmerizing kaleidoscopic art with this interactive painting tool.</p>
+                    </a>
+                </div>
+                <button class="dismiss-btn" id="dismissEntertainment">Dismiss Entertainment Zone</button>
+            </div>
+        </div>
+<!-- Share Button -->
+<button id="shareBtn" class="control-btn">Share</button>
+
+<!-- Share Modal -->
+<div id="shareModalBackdrop" class="modal-backdrop hidden">
+<div id="shareModal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close" id="closeShareModal">&times;</span>
+        <h2>Share Your Session</h2>
+
+        <!-- Share Options -->
+        <div class="share-options">
+            <button id="simpleShareBtn" class="share-option active">Simple Share</button>
+            <button id="detailedShareBtn" class="share-option">Detailed Share</button>
+        </div>
+
+        <!-- Share Custom Message -->
+        <div class="form-group">
+            <label for="shareMessage">Customize Your Message:</label>
+            <textarea id="shareMessage" placeholder="Write a message to share..."></textarea>
+        </div>
+
+        <!-- Share Preview -->
+        <div id="sharePreview" class="share-preview">
+            <!-- This area will dynamically show the share content -->
+        </div>
+
+        <!-- Share Actions -->
+        <button id="shareTwitter" class="share-btn">Share on Twitter</button>
+        <button id="shareFacebook" class="share-btn">Share on Facebook</button>
+        <button id="copyLink" class="share-btn">Copy Link</button>
+    </div>
+</div>
+</div>
+
+        <script src="script.js" defer></script>
+    </body>
+</html>
