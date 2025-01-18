@@ -1,40 +1,71 @@
 /* ===================================
-   Dark/Light Mode Setup
+   1) Root & Light Mode Variables
    =================================== */
-/* Default: Dark Mode */
+:root {
+    /* Default (Dark Mode) Variables */
+    --bg-color: #202020;
+    --text-color: #f5f5f5;
+    --border-color: #555;
+
+    /* Button colors */
+    --button-bg: #2ecc71;
+    --button-hover-bg: #27ae60;
+
+    /* Timer */
+    --timer-container-bg: #333;
+    --timer-text-color: #f5f5f5;
+
+    /* Extra “currentColor” usage for upper-controls */
+    /* (No default for that; each theme will override as needed) */
+}
+
+body.light-mode {
+    /* Light Mode Variable Overrides */
+    --bg-color: #f5f5f5;
+    --text-color: #2c3e50;
+    --border-color: #d3d3d3;
+
+    --button-bg: #2ecc71;       /* Could remain the same if you like */
+    --button-hover-bg: #27ae60;
+
+    --timer-container-bg: #f5f5f5;
+    --timer-text-color: #2c3e50;
+}
+
+/* ===================================
+   2) Universal Base Styles (Using Variables)
+   =================================== */
+
+/* Default: Dark Mode background/text using vars */
 body {
-    background-color: #202020;
-    color: #f5f5f5;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     font-family: 'Arial', sans-serif;
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
 }
 
-/* Light Mode Override */
-body.darkModeToggle {
-    background-color: #f5f5f5;
-    color: #2c3e50;
-}
-
-/* Hidden class for elements that should not be displayed */
+/* Light Mode is now toggled by adding .light-mode to <body> */
 .hidden {
     display: none !important;
 }
 
-/* ===================================
-   Layout & Containers
-   =================================== */
+/* Layout & Containers */
 .app-container {
     text-align: center;
 }
 
-/* Timer container and display */
 .timer-container {
     position: relative;
     width: 300px;
     height: 300px;
     margin: 2rem auto;
+    background: var(--timer-container-bg);
+    /* The border radius/border thickness might differ per theme, but 
+       in most themes it’s 50% or 3px, so keep as needed or override in themes */
+    border-radius: 50%;
+    border: 3px solid var(--border-color);
 }
 
 .timer-display {
@@ -44,12 +75,11 @@ body.darkModeToggle {
     transform: translate(-50%, -50%);
     font-size: 3.5rem;
     font-weight: bold;
-    color: #2c3e50;
+    color: var(--timer-text-color);
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1;
 }
 
-/* Upper and lower control sections */
 .upper-controls,
 .lower-controls {
     display: flex;
@@ -58,7 +88,7 @@ body.darkModeToggle {
     margin-top: 1rem;
 }
 
-/* Buttons shared styling */
+/* Buttons shared styling, referencing variables */
 button {
     padding: 0.8rem 1.2rem;
     font-size: 1rem;
@@ -66,112 +96,91 @@ button {
     border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
+    background-color: var(--button-bg);
+    color: var(--text-color);
 }
 
 button:hover {
-    opacity: 0.9;
+    background-color: var(--button-hover-bg);
 }
 
 /* ===================================
-   Themes (Classic, Calm, Retro, Party)
+   3) Themes (Classic, Calm, Retro, Party)
+   - Dark Mode Defaults & Light Mode Overrides
    =================================== */
 
-/* Classic Theme Base (Dark Mode Default) */
-.theme-classic .timer-container {
-    background: #333;           /* A softer gray for dark mode */
-    border-radius: 50%;
-    border: 3px solid #555;     /* Darker border that still contrasts */
+/* ---------- Classic Theme (Dark Mode) ---------- */
+.theme-classic {
+    /* Override only what changes from root default */
+    --timer-container-bg: #333;
+    --timer-text-color: #f5f5f5;
+    --button-bg: #2ecc71;
+    --button-hover-bg: #27ae60;
 }
 
-.theme-classic .timer-display {
-    color: #f5f5f5;             /* Light text for dark background */
+/* Light Mode overrides for Classic */
+body.light-mode.theme-classic {
+    --timer-container-bg: #f5f5f5;
+    --timer-text-color: #2c3e50;
+    /* You can keep same button colors or override them if desired */
 }
 
-.theme-classic button {
-    background-color: #2ecc71;
-    color: white;
-    border: 1px solid #27ae60;  /* Slight border to define the button edges in dark mode */
+/* ---------- Calm Theme (Dark Mode) ---------- */
+.theme-calm {
+    --timer-container-bg: linear-gradient(135deg, #4a6782, #506c88);
+    --timer-text-color: #a3d5f7;
+    --button-bg: #a5d6a7;
+    --button-hover-bg: #81c784;
+    /* Example: a custom border color if different from root? 
+       If not, use var(--border-color). 
+       If yes, define: --border-color: #4a6782; etc. */
 }
 
-.theme-classic button:hover {
-    background-color: #27ae60;
+/* Light Mode overrides for Calm */
+body.light-mode.theme-calm {
+    --timer-container-bg: linear-gradient(135deg, #a3d5f7, #e8f5ff);
+    --timer-text-color: #3b5998;
+    /* Possibly override buttons if desired */
 }
 
-/* Light Mode Overrides */
-body.light-mode .theme-classic .timer-container {
-    background: #f5f5f5;       /* Original light background */
-    border: 3px solid #d3d3d3; /* Subtle, light border */
+/* ---------- Retro Theme (Dark Mode) ---------- */
+.theme-retro {
+    --timer-container-bg: black;
+    --timer-text-color: #00ff00;
+    --button-bg: #39ff14;
+    --button-hover-bg: #2e8b57;
+    /* You can define more neon-related variables if you want 
+       to animate them differently */
 }
 
-body.light-mode .theme-classic .timer-display {
-    color: #2c3e50;            /* Darker text for a light background */
+/* Light Mode overrides for Retro */
+body.light-mode.theme-retro {
+    --timer-container-bg: #ccffcc;
+    --timer-text-color: #003300;
+    /* etc. for the buttons or border if needed */
 }
 
-body.light-mode .theme-classic button {
-    background-color: #2ecc71; /* Works nicely on light mode too */
-    color: white;
-    border: none;              /* No need for a border in light mode */
+/* ---------- Party Theme (Dark Mode) ---------- */
+.theme-party {
+    --timer-container-bg: radial-gradient(circle, #ff00ff, #8000ff, #0000ff);
+    --timer-text-color: #ffffff;
+    --button-bg: linear-gradient(90deg, #ff69b4, #ff1493);
+    /* Also can define additional variables if you want to override the neon color */
 }
 
-/* ---------- Calm Theme (Dark Mode Default) ---------- */
-.theme-calm .timer-container {
-    /* Darker, muted blues for a calm feel against a dark background */
-    background: linear-gradient(135deg, #4a6782, #506c88);
-    border-radius: 30px;
-    border: 3px solid #4a6782;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+/* Light Mode overrides for Party */
+body.light-mode.theme-party {
+    --timer-container-bg: radial-gradient(circle, #ffc0cb, #ffa6d6, #ff99e6);
+    --timer-text-color: #8b008b;
+    /* etc. for the buttons or border if needed */
 }
 
-.theme-calm .timer-display {
-    /* Light blue text to contrast the darker container */
-    color: #a3d5f7; 
-}
+/* ===================================
+   4) Animations & Theme-Specific Extras
+   (Using the final variable references where applicable)
+   =================================== */
 
-.theme-calm button {
-    /* Slightly pastel green buttons still pop on dark background */
-    background-color: #a5d6a7;
-    color: white;
-    border-radius: 15px;
-    border: 1px solid #81c784; /* Subtle border for better definition in dark mode */
-}
-
-.theme-calm button:hover {
-    background-color: #81c784;
-}
-
-/* ---------- Light Mode Overrides ---------- */
-body.light-mode .theme-calm .timer-container {
-    /* Revert to original calm theme colors for light mode */
-    background: linear-gradient(135deg, #a3d5f7, #e8f5ff);
-    border: 3px solid #a3d5f7;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-body.light-mode .theme-calm .timer-display {
-    color: #3b5998;
-}
-
-body.light-mode .theme-calm button {
-    background-color: #a5d6a7;
-    color: white;
-    border: none; /* No border needed in light mode */
-}
-
-body.light-mode .theme-calm button:hover {
-    background-color: #81c784;
-}
-
-/* ---------- Retro Theme (Dark Mode Default) ---------- */
-.theme-retro .timer-container {
-    background: black;
-    border-radius: 5px;
-    border: 3px solid #00ff00;
-    /* Animated neon glow */
-    box-shadow: 0 4px 15px #00ff00, 0 0 10px #00ff00;
-    animation: retroGlow 1.5s infinite alternate ease-in-out;
-}
-
-/* Pulsing neon glow animation */
+/* Retro Neon Glow & Flicker */
 @keyframes retroGlow {
     from {
         box-shadow: 0 4px 15px #00ff00, 0 0 10px #00ff00;
@@ -181,73 +190,12 @@ body.light-mode .theme-calm button:hover {
     }
 }
 
-.theme-retro .timer-display {
-    color: #00ff00;
-    font-family: 'Courier New', monospace;
-    text-shadow: 0 0 8px #00ff00;
-    /* Flicker effect to mimic old CRT screens */
-    animation: retroFlicker 3s infinite steps(20, start);
-}
-
-/* Subtle flicker animation */
 @keyframes retroFlicker {
-    0%, 15%, 30%, 45%, 60%, 75%, 90%, 100% {
-        opacity: 1;
-    }
-    5%, 20%, 35%, 50%, 65%, 80%, 95% {
-        opacity: 0.8;
-    }
+    0%, 15%, 30%, 45%, 60%, 75%, 90%, 100% { opacity: 1; }
+    5%, 20%, 35%, 50%, 65%, 80%, 95% { opacity: 0.8; }
 }
 
-.theme-retro button {
-    background-color: #39ff14;
-    color: black;
-    border-radius: 0;
-    font-family: 'Courier New', monospace;
-    /* Add a subtle border to define buttons better in dark mode */
-    border: 1px solid #2e8b57;
-}
-
-.theme-retro button:hover {
-    background-color: #2e8b57;
-    color: #00ff00;
-}
-
-/* ---------- Light Mode Overrides ---------- */
-body.light-mode .theme-retro .timer-container {
-    /* Invert the scheme for light mode: green background, black text */
-    background: #ccffcc; 
-    border: 3px solid #009900;
-    box-shadow: 0 4px 10px #66ff66;
-    animation: none; /* No pulsing in light mode for a calmer look */
-}
-
-body.light-mode .theme-retro .timer-display {
-    color: #003300;
-    text-shadow: none;
-    animation: none; /* Disable flicker in light mode for a cleaner display */
-}
-
-body.light-mode .theme-retro button {
-    background-color: #39ff14;
-    color: black;
-    border: 1px solid #2e8b57;
-}
-
-body.light-mode .theme-retro button:hover {
-    background-color: #2e8b57;
-    color: #ccffcc;
-}
-
-/* ---------- Party Theme (Dark Mode Default) ---------- */
-.theme-party .timer-container {
-    background: radial-gradient(circle, #ff00ff, #8000ff, #0000ff);
-    border-radius: 50%;
-    border: 3px solid #ff69b4;
-    /* Keep the strong glow and neon feel */
-    animation: partyGlow 1.5s infinite alternate;
-}
-
+/* Party Glow & Flicker */
 @keyframes partyGlow {
     from {
         box-shadow: 0 0 10px #ff69b4, 0 0 20px #ff69b4;
@@ -257,27 +205,9 @@ body.light-mode .theme-retro button:hover {
     }
 }
 
-.theme-party .timer-display {
-    color: #ffffff;
-    text-shadow: 0 0 10px #ff69b4, 0 0 20px #ff69b4;
-    /* Flicker effect to simulate a strobe-like atmosphere */
-    animation: partyFlicker 2s infinite steps(10, start);
-}
-
 @keyframes partyFlicker {
-    0%, 20%, 40%, 60%, 80%, 100% {
-        opacity: 1;
-    }
-    10%, 30%, 50%, 70%, 90% {
-        opacity: 0.8;
-    }
-}
-
-.theme-party button {
-    background: linear-gradient(90deg, #ff69b4, #ff1493);
-    color: white;
-    border-radius: 50px;
-    animation: pulse 1.5s infinite;
+    0%, 20%, 40%, 60%, 80%, 100% { opacity: 1; }
+    10%, 30%, 50%, 70%, 90% { opacity: 0.8; }
 }
 
 @keyframes pulse {
@@ -289,32 +219,118 @@ body.light-mode .theme-retro button:hover {
     }
 }
 
-/* ---------- Light Mode Overrides ---------- */
-body.light-mode .theme-party .timer-container {
-    /* Softer pastel gradient for a "day party" vibe */
-    background: radial-gradient(circle, #ffc0cb, #ffa6d6, #ff99e6);
-    border: 3px solid #ff99cc;
-    /* Subtle glow, less intense than dark mode */
+/* Specific Retro & Party containers / displays that differ in shape, border, or animations */
+.theme-retro .timer-container {
+    border-radius: 5px;
+    border: 3px solid #00ff00; /* Keep a fixed neon border or create a var if you prefer */
+    box-shadow: 0 4px 15px #00ff00, 0 0 10px #00ff00;
+    animation: retroGlow 1.5s infinite alternate ease-in-out;
+}
+
+.theme-retro .timer-display {
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 8px #00ff00;
+    animation: retroFlicker 3s infinite steps(20, start);
+}
+
+/* Light mode retro: remove or reduce animations */
+body.light-mode.theme-retro .timer-container {
+    box-shadow: 0 4px 10px #66ff66;
+    animation: none; 
+}
+
+body.light-mode.theme-retro .timer-display {
+    text-shadow: none;
+    animation: none; 
+}
+
+/* Party theme specialized container & display */
+.theme-party .timer-container {
+    border-radius: 50%;
+    border: 3px solid #ff69b4;
+    animation: partyGlow 1.5s infinite alternate;
+}
+
+.theme-party .timer-display {
+    text-shadow: 0 0 10px #ff69b4, 0 0 20px #ff69b4;
+    animation: partyFlicker 2s infinite steps(10, start);
+}
+
+body.light-mode.theme-party .timer-container {
     box-shadow: 0 0 10px #ffb6c1, 0 0 20px #ffb6c1;
-    animation: none; /* No pulsing animation in light mode for a calmer but still fun feel */
+    animation: none; 
 }
 
-body.light-mode .theme-party .timer-display {
-    color: #8b008b; /* Dark magenta text for contrast on light background */
+body.light-mode.theme-party .timer-display {
+    animation: none; 
     text-shadow: 0 0 5px #ffb6c1;
-    animation: none; /* Remove flicker in light mode for easier reading */
 }
 
-body.light-mode .theme-party button {
-    /* Slightly softer pink gradient in light mode */
-    background: linear-gradient(90deg, #ffb6c1, #ff1493);
-    color: white;
+.theme-party button {
     border-radius: 50px;
-    animation: none; /* No pulse animation in light mode for more subtlety */
+    animation: pulse 1.5s infinite;
+}
+
+body.light-mode.theme-party button {
+    animation: none;
 }
 
 /* ===================================
-   Skin Selector
+   5) Upper-Controls Overrides
+   =================================== */
+
+/* Force upper buttons to be transparent & use currentColor */
+.upper-controls button.control-btn {
+    background: transparent !important;
+    color: currentColor !important;
+    border: 2px solid currentColor !important;
+    border-radius: 5px;
+    padding: 0.8rem 1.2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upper-controls button.control-btn:hover {
+    opacity: 0.8;
+}
+
+/* Assign color to .upper-controls per theme so currentColor resolves properly */
+
+/* Classic */
+.theme-classic .upper-controls {
+    color: #2ecc71;
+}
+body.light-mode.theme-classic .upper-controls {
+    color: #27ae60;
+}
+
+/* Calm */
+.theme-calm .upper-controls {
+    color: #a5d6a7;
+}
+body.light-mode.theme-calm .upper-controls {
+    color: #81c784;
+}
+
+/* Retro */
+.theme-retro .upper-controls {
+    color: #39ff14;
+}
+body.light-mode.theme-retro .upper-controls {
+    color: #2e8b57;
+}
+
+/* Party */
+.theme-party .upper-controls {
+    color: #ff69b4;
+}
+body.light-mode.theme-party .upper-controls {
+    color: #ff1493;
+}
+
+/* ===================================
+   6) Skin Selector (unchanged structural styles)
    =================================== */
 .skin-selector {
     display: none;
@@ -366,7 +382,7 @@ body.light-mode .theme-party button {
 }
 
 /* ===================================
-   Logs Section
+   7) Logs Section
    =================================== */
 .logs {
     border-top: 1px solid #eee;
@@ -427,7 +443,7 @@ body.light-mode .theme-party button {
 }
 
 /* ===================================
-   Share Options
+   8) Share Options
    =================================== */
 .share-options {
     display: flex;
@@ -464,7 +480,6 @@ body.light-mode .theme-party button {
     text-align: left;
 }
 
-/* Share buttons */
 .share-btn {
     position: relative;
     z-index: 1000;
@@ -492,7 +507,7 @@ body.light-mode .theme-party button {
 }
 
 /* ===================================
-   Modal & Backdrop
+   9) Modal & Backdrop
    =================================== */
 .modal-backdrop {
     position: fixed;
@@ -527,7 +542,81 @@ body.light-mode .theme-party button {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Prevent body scroll when modal is open */
 body.modal-open {
     overflow: hidden;
 }
+
+/* ===================================
+   10) Tippy.js Theme Integration
+   =================================== */
+.tippy-box[data-theme~='buzz'] {
+    background-color: var(--timer-container-bg);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 5px;
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.tippy-box[data-theme~='buzz'] .tippy-arrow {
+    color: var(--timer-container-bg);
+}
+/* 1) Container position & layout */
+.display-group {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 1rem;
+}
+
+/* 2) Buttons share the “transparent + border” approach if you want that style: */
+.display-group button {
+    background: transparent !important;
+    color: currentColor !important;
+    border: 2px solid currentColor !important;
+    border-radius: 5px;
+    padding: 0.8rem 1.2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.display-group button:hover {
+    opacity: 0.8;
+}
+
+/* 3) Theme overrides (same as .upper-controls, but for .display-group) */
+/* Classic */
+.theme-classic .display-group {
+    color: #2ecc71;
+}
+body.light-mode.theme-classic .display-group {
+    color: #27ae60;
+}
+
+/* Calm */
+.theme-calm .display-group {
+    color: #a5d6a7;
+}
+body.light-mode.theme-calm .display-group {
+    color: #81c784;
+}
+
+/* Retro */
+.theme-retro .display-group {
+    color: #39ff14;
+}
+body.light-mode.theme-retro .display-group {
+    color: #2e8b57;
+}
+
+/* Party */
+.theme-party .display-group {
+    color: #ff69b4;
+}
+body.light-mode.theme-party .display-group {
+    color: #ff1493;
+}
+

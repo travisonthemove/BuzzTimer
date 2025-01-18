@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const entertainmentModal = document.getElementById('entertainmentModal');
     const closeEntertainmentModal = entertainmentModal.querySelector('.close');
     const dismissEntertainment = document.getElementById('dismissEntertainment');
-    const distractMeBtn = document.getElementById('distractMeBtn');   
+    const distractMeBtn = document.getElementById('distractMeBtn');
     const shareModalBackdrop = document.getElementById('shareModalBackdrop');
     const shareBtn = document.getElementById('shareBtn');
     const shareModal = document.getElementById('shareModal');
@@ -41,18 +41,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareFacebook = document.getElementById('shareFacebook');
     const copyLink = document.getElementById('copyLink');
     const productName = document.getElementById('productName');
-
-    // Reference to the timer container (which has tabindex="-1" in HTML)
     const timerContainer = document.getElementById('timerContainer');
-// Dark Mode Toggle
-const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    // ToDo  NEW: Grab the Settings button
+    const settingsBtn = document.getElementById('settingsBtn');
 
+// A mapping from the data-skin values to a display-friendly name
+    let currentSkin = 'classic';
+
+const themeNames = {
+  classic: 'Classic',
+  calm: 'Calm',
+  retro: 'Retro',
+  partyvibe: 'Party Vibe',
+};
+    // Grab the <p id="activeThemeText">
+    const activeThemeText = document.getElementById('activeThemeText');
+activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
+    // 1) Tippy.js Initialization (new)
+    tippy('[data-tippy-content]', {
+        theme: 'buzz',
+        animation: 'scale',
+        duration: [200, 150],
+        placement: 'top'
+    });
 
     // Timer Variables
     let timerInterval;
     let elapsedSeconds = 0;
     let isRunning = false;
-    let sessionDetailsSaved = false; 
+    let sessionDetailsSaved = false;
 
     const formatTime = (seconds) => {
         const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
@@ -114,15 +132,13 @@ const darkModeToggle = document.getElementById('darkModeToggle');
 
         sessionBanner.innerHTML = `
             <p>
-                Session details saved! 
+                Session details saved!
                 <button id="expandSessionBtn2">Edit Details</button>
             </p>`;
         const expandSessionBtn2 = document.getElementById('expandSessionBtn2');
         expandSessionBtn2.addEventListener('click', expandSessionDetails);
 
         showElement(sessionBanner);
-
-
 
         if (!isRunning) {
             startTimer();
@@ -170,7 +186,7 @@ const darkModeToggle = document.getElementById('darkModeToggle');
         showElement(sessionBanner);
         hideElement(sessionDetails);
 
-        logList.innerHTML = ''; 
+        logList.innerHTML = '';
         console.log("Log list cleared");
 
         hideElement(logModal);
@@ -184,7 +200,7 @@ const darkModeToggle = document.getElementById('darkModeToggle');
     themeToggle.addEventListener('click', () => {
         if (skinSelector.classList.contains('hidden')) {
             showElement(skinSelector);
-        skinSelector.focus(); // Focus the panel now that it's visible
+            skinSelector.focus(); // Focus the panel now that it's visible
         } else {
             hideElement(skinSelector);
             timerContainer.focus();
@@ -194,7 +210,7 @@ const darkModeToggle = document.getElementById('darkModeToggle');
 
     skinOptions.forEach(option => {
         option.addEventListener('click', (event) => {
-            event.stopPropagation(); 
+            event.stopPropagation();
 
             skinOptions.forEach(o => o.classList.remove('active'));
             option.classList.add('active');
@@ -217,6 +233,11 @@ const darkModeToggle = document.getElementById('darkModeToggle');
 
             timerSkin.src = `static/skins/${selectedSkin}.svg`;
 
+// Set the text in the p element
+            currentSkin = selectedSkin;
+            const friendlyName = themeNames[currentSkin] || 'Unknown';
+            activeThemeText.textContent = `Active Theme: ${friendlyName}`;
+
             hideElement(skinSelector);
             timerContainer.focus();
         });
@@ -224,6 +245,15 @@ const darkModeToggle = document.getElementById('darkModeToggle');
 
     updateTimerDisplay();
     console.log('Timer and theme logic restored.');
+
+    // ========== SETTINGS BUTTON EVENT ==========
+    // This ensures no error is thrown if `settingsBtn` is present in the HTML.
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            // For now, do nothing or log a placeholder
+            console.log('Settings button clicked. No action configured yet.');
+        });
+    }
 
     logBtn.addEventListener('click', () => {
         showElement(logModal);
@@ -271,32 +301,32 @@ const darkModeToggle = document.getElementById('darkModeToggle');
         console.log("High Idea modal opened");
     });
 
-saveHighIdea.addEventListener('click', () => {
-    const ideaContent = richTextEditor.innerHTML.trim();
-    if (ideaContent) {
-        // Use the timer's elapsed time instead of current wall clock time
-        const timeString = formatTime(elapsedSeconds);
+    saveHighIdea.addEventListener('click', () => {
+        const ideaContent = richTextEditor.innerHTML.trim();
+        if (ideaContent) {
+            // Use the timer's elapsed time instead of current wall clock time
+            const timeString = formatTime(elapsedSeconds);
 
-        const logEntry = document.createElement('div');
-        logEntry.classList.add('log-entry');
-        const ideaContentHtml = `
-            <span class="log-time">${timeString}</span>
-            <div class="log-label idea-content">${ideaContent}</div>
-        `;
-        logEntry.innerHTML = ideaContentHtml;
+            const logEntry = document.createElement('div');
+            logEntry.classList.add('log-entry');
+            const ideaContentHtml = `
+                <span class="log-time">${timeString}</span>
+                <div class="log-label idea-content">${ideaContent}</div>
+            `;
+            logEntry.innerHTML = ideaContentHtml;
 
-        logList.appendChild(logEntry);
-        const logsSection = document.querySelector('.logs');
-        showElement(logsSection);
+            logList.appendChild(logEntry);
+            const logsSection = document.querySelector('.logs');
+            showElement(logsSection);
 
-        richTextEditor.innerHTML = '';
-        hideElement(highIdeaModal);
-        timerContainer.focus();
-        console.log(`High Idea saved: "${ideaContent}" at ${timeString}`);
-    } else {
-        console.log("High Idea content is empty");
-    }
-});
+            richTextEditor.innerHTML = '';
+            hideElement(highIdeaModal);
+            timerContainer.focus();
+            console.log(`High Idea saved: "${ideaContent}" at ${timeString}`);
+        } else {
+            console.log("High Idea content is empty");
+        }
+    });
 
     const closeHighIdeaModal = () => {
         hideElement(highIdeaModal);
@@ -313,90 +343,89 @@ saveHighIdea.addEventListener('click', () => {
         }
     });
 
-let shareType = 'simple'; 
+    let shareType = 'simple'; 
 
-shareBtn.addEventListener('click', () => {
-    console.log('Share button clicked!');
-    showElement(shareModal);
-    showElement(shareModalBackdrop);
-    updateSharePreview();
-});
-
-closeShareModal.addEventListener('click', () => {
-    hideElement(shareModal);
-    hideElement(shareModalBackdrop);
-    timerContainer.focus();
-});
-
-simpleShareBtn.addEventListener('click', () => {
-    shareType = 'simple';
-    updateSharePreview();
-    simpleShareBtn.classList.add('active');
-    detailedShareBtn.classList.remove('active');
-});
-
-detailedShareBtn.addEventListener('click', () => {
-    shareType = 'detailed';
-    updateSharePreview();
-    detailedShareBtn.classList.add('active');
-    simpleShareBtn.classList.remove('active');
-});
-
-const updateSharePreview = () => {
-    const customMessage = shareMessage.value.trim();
-    const theme = themeContainer.classList[1] || 'Classic Theme';
-
-    if (shareType === 'simple') {
-        sharePreview.textContent = `
-            ${customMessage}
-            Theme: ${theme}
-            Learn more at BuzzTimer.com
-        `.trim();
-    } else {
-        const loggedMoments = Array.from(logList.children)
-            .map(entry => entry.textContent.trim())
-            .join('\n');
-        const strainInfo = productName.value.trim() || 'No strain specified';
-
-        sharePreview.textContent = `
-            ${customMessage}
-            Theme: ${theme}
-            Strain: ${strainInfo}
-            Logged Moments:\n${loggedMoments}
-            Learn more at BuzzTimer.com
-        `.trim();
-    }
-};
-
-shareTwitter.addEventListener('click', () => {
-    const message = sharePreview.textContent.trim();
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-});
-
-shareFacebook.addEventListener('click', () => {
-    const message = sharePreview.textContent.trim();
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-});
-
-copyLink.addEventListener('click', () => {
-    const shareText = sharePreview.textContent.trim();
-    navigator.clipboard.writeText(shareText).then(() => {
-        alert('Link copied to clipboard!');
+    shareBtn.addEventListener('click', () => {
+        console.log('Share button clicked!');
+        showElement(shareModal);
+        showElement(shareModalBackdrop);
+        updateSharePreview();
     });
-});
 
-// Move this listener outside of the copyLink event
-shareMessage.addEventListener('input', updateSharePreview);
-
-shareModalBackdrop.addEventListener('click', (event) => {
-    if (event.target === shareModalBackdrop) {
+    closeShareModal.addEventListener('click', () => {
         hideElement(shareModal);
         hideElement(shareModalBackdrop);
         timerContainer.focus();
-    }
-});
+    });
+
+    simpleShareBtn.addEventListener('click', () => {
+        shareType = 'simple';
+        updateSharePreview();
+        simpleShareBtn.classList.add('active');
+        detailedShareBtn.classList.remove('active');
+    });
+
+    detailedShareBtn.addEventListener('click', () => {
+        shareType = 'detailed';
+        updateSharePreview();
+        detailedShareBtn.classList.add('active');
+        simpleShareBtn.classList.remove('active');
+    });
+
+    const updateSharePreview = () => {
+        const customMessage = shareMessage.value.trim();
+        const theme = themeContainer.classList[1] || 'Classic Theme';
+
+        if (shareType === 'simple') {
+            sharePreview.textContent = `
+                ${customMessage}
+                Theme: ${theme}
+                Learn more at BuzzTimer.com
+            `.trim();
+        } else {
+            const loggedMoments = Array.from(logList.children)
+                .map(entry => entry.textContent.trim())
+                .join('\n');
+            const strainInfo = productName.value.trim() || 'No strain specified';
+
+            sharePreview.textContent = `
+                ${customMessage}
+                Theme: ${theme}
+                Strain: ${strainInfo}
+                Logged Moments:\n${loggedMoments}
+                Learn more at BuzzTimer.com
+            `.trim();
+        }
+    };
+
+    shareTwitter.addEventListener('click', () => {
+        const message = sharePreview.textContent.trim();
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    });
+
+    shareFacebook.addEventListener('click', () => {
+        const message = sharePreview.textContent.trim();
+        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    });
+
+    copyLink.addEventListener('click', () => {
+        const shareText = sharePreview.textContent.trim();
+        navigator.clipboard.writeText(shareText).then(() => {
+            alert('Link copied to clipboard!');
+        });
+    });
+
+    shareMessage.addEventListener('input', updateSharePreview);
+
+    shareModalBackdrop.addEventListener('click', (event) => {
+        if (event.target === shareModalBackdrop) {
+            hideElement(shareModal);
+            hideElement(shareModalBackdrop);
+            timerContainer.focus();
+        }
+    });
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !shareModal.classList.contains('hidden')) {
@@ -432,9 +461,12 @@ shareModalBackdrop.addEventListener('click', (event) => {
             toggleModal(false);
         }
     });
-// Dark Light Toggle
-darkModeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('darkModeToggle');
-    const isDark = document.body.classList.contains('darkModeToggle');
-    darkModeToggle.innerHTML = isDark ? '🌙' : '☀️';
-});});
+
+    // Dark/Light Mode Toggle
+    darkModeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        darkModeToggle.innerHTML = isLight ? '🌙' : '☀️';
+        console.log(`Light mode is now ${isLight ? 'ON' : 'OFF'}`);
+    });
+});
