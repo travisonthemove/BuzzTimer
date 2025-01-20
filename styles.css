@@ -15,8 +15,9 @@
     --timer-container-bg: #333;
     --timer-text-color: #f5f5f5;
 
-    /* Extra “currentColor” usage for upper-controls */
-    /* (No default for that; each theme will override as needed) */
+    /* Tooltip */
+    --tooltip-bg: #333; /* Default tooltip background */
+    --tooltip-color: #fff; /* Default tooltip text */
 }
 
 body.light-mode {
@@ -25,18 +26,20 @@ body.light-mode {
     --text-color: #2c3e50;
     --border-color: #d3d3d3;
 
-    --button-bg: #2ecc71;       /* Could remain the same if you like */
+    --button-bg: #2ecc71;
     --button-hover-bg: #27ae60;
 
     --timer-container-bg: #f5f5f5;
     --timer-text-color: #2c3e50;
+
+    /* Tooltip */
+    --tooltip-bg: #e0e0e0;
+    --tooltip-color: #2c3e50;
 }
 
 /* ===================================
    2) Universal Base Styles (Using Variables)
    =================================== */
-
-/* Default: Dark Mode background/text using vars */
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -44,16 +47,9 @@ body {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
-}
 
-/* Light Mode is now toggled by adding .light-mode to <body> */
-.hidden {
-    display: none !important;
-}
-
-/* Layout & Containers */
-.app-container {
-    text-align: center;
+    /* Transition background first */
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 .timer-container {
@@ -62,10 +58,13 @@ body {
     height: 300px;
     margin: 2rem auto;
     background: var(--timer-container-bg);
-    /* The border radius/border thickness might differ per theme, but 
-       in most themes it’s 50% or 3px, so keep as needed or override in themes */
     border-radius: 50%;
     border: 3px solid var(--border-color);
+
+    /* Transition second (staggered after body) */
+    transition: all 1s ease;
+    transition: background-color 0.75s ease, border-color 0.75s ease, box-shadow 0.75s ease;
+    transition-delay: 0.5s;
 }
 
 .timer-display {
@@ -80,543 +79,170 @@ body {
     z-index: 1;
 }
 
-.upper-controls,
-.lower-controls {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 1rem;
-}
-
-/* Buttons shared styling, referencing variables */
-button {
+/* Buttons (Upper, Lower, Share) */
+.upper-controls button,
+.lower-controls button,
+.share-btn {
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: 2px solid var(--button-bg);
+    border-radius: 5px;
     padding: 0.8rem 1.2rem;
     font-size: 1rem;
-    border: none;
-    border-radius: 5px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    text-align: center;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.upper-controls button:hover,
+.lower-controls button:hover,
+.share-btn:hover {
+    background-color: var(--button-hover-bg);
+    color: var(--text-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Upper Controls */
+.upper-controls {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+/* Lower Controls */
+.lower-controls {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+/* Share Button */
+.share-btn {
+    margin-top: 1.5rem;
+    padding: 0.8rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--button-bg);
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.share-btn:hover {
     background-color: var(--button-bg);
+    color: var(--text-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Session Banner */
+.session-banner {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 1rem;
     color: var(--text-color);
 }
 
-button:hover {
-    background-color: var(--button-hover-bg);
+.session-banner button {
+    background: transparent;
+    border: none;
+    color: var(--button-bg);
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+.session-banner button:hover {
+    color: var(--button-hover-bg);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.app-container {
+    text-align: center;
 }
 
 /* ===================================
    3) Themes (Classic, Calm, Retro, Party)
-   - Dark Mode Defaults & Light Mode Overrides
    =================================== */
-
-/* ---------- Classic Theme (Dark Mode) ---------- */
+/* Classic */
 .theme-classic {
-    /* Override only what changes from root default */
-    --timer-container-bg: #333;
-    --timer-text-color: #f5f5f5;
     --button-bg: #2ecc71;
     --button-hover-bg: #27ae60;
-}
-
-/* Light Mode overrides for Classic */
-body.light-mode.theme-classic {
-    --timer-container-bg: #f5f5f5;
-    --timer-text-color: #2c3e50;
-    /* You can keep same button colors or override them if desired */
-}
-
-/* ---------- Calm Theme (Dark Mode) ---------- */
-.theme-calm {
-    --timer-container-bg: linear-gradient(135deg, #4a6782, #506c88);
-    --timer-text-color: #a3d5f7;
-    --button-bg: #a5d6a7;
-    --button-hover-bg: #81c784;
-    /* Example: a custom border color if different from root? 
-       If not, use var(--border-color). 
-       If yes, define: --border-color: #4a6782; etc. */
-}
-
-/* Light Mode overrides for Calm */
-body.light-mode.theme-calm {
-    --timer-container-bg: linear-gradient(135deg, #a3d5f7, #e8f5ff);
-    --timer-text-color: #3b5998;
-    /* Possibly override buttons if desired */
-}
-
-/* ---------- Retro Theme (Dark Mode) ---------- */
-.theme-retro {
-    --timer-container-bg: black;
-    --timer-text-color: #00ff00;
-    --button-bg: #39ff14;
-    --button-hover-bg: #2e8b57;
-    /* You can define more neon-related variables if you want 
-       to animate them differently */
-}
-
-/* Light Mode overrides for Retro */
-body.light-mode.theme-retro {
-    --timer-container-bg: #ccffcc;
-    --timer-text-color: #003300;
-    /* etc. for the buttons or border if needed */
-}
-
-/* ---------- Party Theme (Dark Mode) ---------- */
-.theme-party {
-    --timer-container-bg: radial-gradient(circle, #ff00ff, #8000ff, #0000ff);
-    --timer-text-color: #ffffff;
-    --button-bg: linear-gradient(90deg, #ff69b4, #ff1493);
-    /* Also can define additional variables if you want to override the neon color */
-}
-
-/* Light Mode overrides for Party */
-body.light-mode.theme-party {
-    --timer-container-bg: radial-gradient(circle, #ffc0cb, #ffa6d6, #ff99e6);
-    --timer-text-color: #8b008b;
-    /* etc. for the buttons or border if needed */
-}
-
-/* ===================================
-   4) Animations & Theme-Specific Extras
-   (Using the final variable references where applicable)
-   =================================== */
-
-/* Retro Neon Glow & Flicker */
-@keyframes retroGlow {
-    from {
-        box-shadow: 0 4px 15px #00ff00, 0 0 10px #00ff00;
-    }
-    to {
-        box-shadow: 0 4px 15px #00ff00, 0 0 20px #00ff00;
-    }
-}
-
-@keyframes retroFlicker {
-    0%, 15%, 30%, 45%, 60%, 75%, 90%, 100% { opacity: 1; }
-    5%, 20%, 35%, 50%, 65%, 80%, 95% { opacity: 0.8; }
-}
-
-/* Party Glow & Flicker */
-@keyframes partyGlow {
-    from {
-        box-shadow: 0 0 10px #ff69b4, 0 0 20px #ff69b4;
-    }
-    to {
-        box-shadow: 0 0 20px #ff69b4, 0 0 40px #ff69b4;
-    }
-}
-
-@keyframes partyFlicker {
-    0%, 20%, 40%, 60%, 80%, 100% { opacity: 1; }
-    10%, 30%, 50%, 70%, 90% { opacity: 0.8; }
-}
-
-@keyframes pulse {
-    from {
-        transform: scale(1);
-    }
-    to {
-        transform: scale(1.1);
-    }
-}
-
-/* Specific Retro & Party containers / displays that differ in shape, border, or animations */
-.theme-retro .timer-container {
-    border-radius: 5px;
-    border: 3px solid #00ff00; /* Keep a fixed neon border or create a var if you prefer */
-    box-shadow: 0 4px 15px #00ff00, 0 0 10px #00ff00;
-    animation: retroGlow 1.5s infinite alternate ease-in-out;
-}
-
-.theme-retro .timer-display {
-    font-family: 'Courier New', monospace;
-    text-shadow: 0 0 8px #00ff00;
-    animation: retroFlicker 3s infinite steps(20, start);
-}
-
-/* Light mode retro: remove or reduce animations */
-body.light-mode.theme-retro .timer-container {
-    box-shadow: 0 4px 10px #66ff66;
-    animation: none; 
-}
-
-body.light-mode.theme-retro .timer-display {
-    text-shadow: none;
-    animation: none; 
-}
-
-/* Party theme specialized container & display */
-.theme-party .timer-container {
-    border-radius: 50%;
-    border: 3px solid #ff69b4;
-    animation: partyGlow 1.5s infinite alternate;
-}
-
-.theme-party .timer-display {
-    text-shadow: 0 0 10px #ff69b4, 0 0 20px #ff69b4;
-    animation: partyFlicker 2s infinite steps(10, start);
-}
-
-body.light-mode.theme-party .timer-container {
-    box-shadow: 0 0 10px #ffb6c1, 0 0 20px #ffb6c1;
-    animation: none; 
-}
-
-body.light-mode.theme-party .timer-display {
-    animation: none; 
-    text-shadow: 0 0 5px #ffb6c1;
-}
-
-.theme-party button {
-    border-radius: 50px;
-    animation: pulse 1.5s infinite;
-}
-
-body.light-mode.theme-party button {
-    animation: none;
-}
-
-/* ===================================
-   5) Upper-Controls Overrides
-   =================================== */
-
-/* Force upper buttons to be transparent & use currentColor */
-.upper-controls button.control-btn {
-    background: transparent !important;
-    color: currentColor !important;
-    border: 2px solid currentColor !important;
-    border-radius: 5px;
-    padding: 0.8rem 1.2rem;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.upper-controls button.control-btn:hover {
-    opacity: 0.8;
-}
-
-/* Assign color to .upper-controls per theme so currentColor resolves properly */
-
-/* Classic */
-.theme-classic .upper-controls {
-    color: #2ecc71;
-}
-body.light-mode.theme-classic .upper-controls {
-    color: #27ae60;
+    --tooltip-bg: #333;
+    --tooltip-color: #2ecc71;
 }
 
 /* Calm */
-.theme-calm .upper-controls {
-    color: #a5d6a7;
-}
-body.light-mode.theme-calm .upper-controls {
-    color: #81c784;
+.theme-calm {
+    --button-bg: #a5d6a7;
+    --button-hover-bg: #81c784;
+    --tooltip-bg: #4a6782;
+    --tooltip-color: #a5d6a7;
 }
 
 /* Retro */
-.theme-retro .upper-controls {
-    color: #39ff14;
-}
-body.light-mode.theme-retro .upper-controls {
-    color: #2e8b57;
+.theme-retro {
+    --button-bg: #39ff14;
+    --button-hover-bg: #2e8b57;
+    --tooltip-bg: black;
+    --tooltip-color: #39ff14;
 }
 
 /* Party */
-.theme-party .upper-controls {
-    color: #ff69b4;
-}
-body.light-mode.theme-party .upper-controls {
-    color: #ff1493;
-}
-
-/* ===================================
-   6) Skin Selector (unchanged structural styles)
-   =================================== */
-.skin-selector {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    margin: 1rem 0;
-    padding: 1rem;
-    background: rgba(155, 89, 182, 0.1);
-    border-radius: 10px;
-    transition: all 0.3s ease;
-}
-
-.skin-selector.visible {
-    display: flex;
-}
-
-.skin-options {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.skin-option {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    padding: 2px;
-    position: relative;
-    transition: all 0.3s ease;
-}
-
-.skin-option:hover {
-    transform: scale(1.1);
-}
-
-.skin-option.active {
-    border-color: #9b59b6;
-    transform: scale(1.1);
-}
-
-.skin-option img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
+.theme-party {
+    --button-bg: #ff69b4;
+    --button-hover-bg: #ff1493;
+    --tooltip-bg: #ff69b4;
+    --tooltip-color: white;
 }
 
 /* ===================================
-   7) Logs Section
-   =================================== */
-.logs {
-    border-top: 1px solid #eee;
-    padding-top: 1rem;
-    margin-top: 2rem;
-}
-
-#logList {
-    max-height: 500px;
-    overflow-y: auto;
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-}
-
-.log-entry {
-    padding: 0.8rem;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 0.5rem;
-    color: #2c3e50;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.log-entry:last-child {
-    border-bottom: none;
-}
-
-.log-time {
-    font-weight: bold;
-    color: #888;
-    margin-right: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.log-label {
-    color: #2c3e50;
-    font-size: 1rem;
-}
-
-.high-idea-entry {
-    background-color: #f0e6f6;
-    border-radius: 5px;
-    margin: 10px 0;
-    padding: 15px;
-}
-
-.high-idea-entry .log-time {
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.idea-content {
-    margin-top: 0.5rem;
-    padding-left: 0.5rem;
-    border-left: 3px solid #9b59b6;
-}
-
-/* ===================================
-   8) Share Options
-   =================================== */
-.share-options {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-bottom: 1rem;
-}
-
-.share-option {
-    padding: 0.5rem 1rem;
-    border: 2px solid #9b59b6;
-    border-radius: 5px;
-    background: none;
-    color: #9b59b6;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.share-option.active {
-    background: #9b59b6;
-    color: white;
-}
-
-.share-option:hover {
-    background: rgba(155, 89, 182, 0.1);
-}
-
-.share-preview {
-    margin: 20px 0;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    text-align: left;
-}
-
-.share-btn {
-    position: relative;
-    z-index: 1000;
-    margin: 5px;
-    padding: 10px 15px;
-    font-size: 1rem;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-#shareTwitter {
-    background-color: #1da1f2;
-    color: white;
-}
-
-#shareFacebook {
-    background-color: #4267b2;
-    color: white;
-}
-
-#copyLink {
-    background-color: #6c757d;
-    color: white;
-}
-
-/* ===================================
-   9) Modal & Backdrop
-   =================================== */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-}
-
-.modal {
-    opacity: 0;
-    transform: scale(0.95);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.modal:not(.hidden) {
-    opacity: 1;
-    transform: scale(1);
-}
-
-.modal-content {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-body.modal-open {
-    overflow: hidden;
-}
-
-/* ===================================
-   10) Tippy.js Theme Integration
+   4) Tippy.js Theme Integration
    =================================== */
 .tippy-box[data-theme~='buzz'] {
-    background-color: var(--timer-container-bg);
-    color: var(--text-color);
-    border: 2px solid var(--border-color);
+    background-color: var(--tooltip-bg); /* Dynamic tooltip background */
+    color: var(--tooltip-color); /* Dynamic tooltip text color */
+    border: 1px solid var(--tooltip-color); /* Optional: Themed border */
     border-radius: 5px;
     font-family: 'Arial', sans-serif;
     font-size: 14px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+/* Tooltip Arrow */
 .tippy-box[data-theme~='buzz'] .tippy-arrow {
-    color: var(--timer-container-bg);
+    color: var(--tooltip-bg);
 }
-/* 1) Container position & layout */
+
+/* ===================================
+   5) Upper Right Buttons (Display Group)
+   =================================== */
 .display-group {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 15px;
+    right: 15px;
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
 }
 
-/* 2) Buttons share the “transparent + border” approach if you want that style: */
 .display-group button {
     background: transparent !important;
     color: currentColor !important;
     border: 2px solid currentColor !important;
     border-radius: 5px;
-    padding: 0.8rem 1.2rem;
+    padding: 0.6rem 1rem;
     font-size: 1rem;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .display-group button:hover {
-    opacity: 0.8;
+    opacity: 0.9;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+    transform: scale(1.05);
 }
-
-/* 3) Theme overrides (same as .upper-controls, but for .display-group) */
-/* Classic */
-.theme-classic .display-group {
-    color: #2ecc71;
-}
-body.light-mode.theme-classic .display-group {
-    color: #27ae60;
-}
-
-/* Calm */
-.theme-calm .display-group {
-    color: #a5d6a7;
-}
-body.light-mode.theme-calm .display-group {
-    color: #81c784;
-}
-
-/* Retro */
-.theme-retro .display-group {
-    color: #39ff14;
-}
-body.light-mode.theme-retro .display-group {
-    color: #2e8b57;
-}
-
-/* Party */
-.theme-party .display-group {
-    color: #ff69b4;
-}
-body.light-mode.theme-party .display-group {
-    color: #ff1493;
-}
-
