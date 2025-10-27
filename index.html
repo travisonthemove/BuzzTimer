@@ -47,7 +47,7 @@
         <!-- Dark/Light Mode Toggle -->
         <button id="darkModeToggle"
                 type="button"
-                aria-label="Switch to Light Mode"
+                aria-label="Switch to light mode"
                 data-action="toggle-dark-mode"
                 data-mode="dark"
                 data-tippy-content="Switch between light mode and dark mode.">
@@ -61,7 +61,7 @@
         </button>
 
         <!-- Theme Toggle Button -->
-        <button id="themeToggle"
+        <button id="themeToggle" aria-controls="skinSelector" aria-expanded="false"
                 type="button"
                 class="themeToggle"
                 aria-label="Themes"
@@ -188,21 +188,21 @@
     </div>
 
     <!-- Skin Selector Section -->
-    <div id="skinSelector" class="hidden" tabindex="-1">
+    <div id="skinSelector" class="hidden" tabindex="-1" aria-hidden="true">
       <h3>Select Timer Theme</h3>
-      <div class="skin-options">
-        <div class="skin-option active" data-skin="classic" data-name="Classic">
+      <div class="skin-options" role="radiogroup" aria-label="Theme selector" aria-activedescendant="">
+        <button class="skin-option active" type="button" role="radio" aria-checked="true" tabindex="0" data-skin="classic" data-name="Classic">
           <img src="static/skins/classic.svg" alt="Classic Theme">
-        </div>
-        <div class="skin-option" data-skin="calm" data-name="Calm">
+        </button>
+        <button class="skin-option" type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="calm" data-name="Calm">
           <img src="static/skins/calm.svg" alt="Calm Theme">
-        </div>
-        <div class="skin-option" data-skin="retro" data-name="Retro">
+        </button>
+        <button class="skin-option" type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="retro" data-name="Retro">
           <img src="static/skins/retro.svg" alt="Retro Theme">
-        </div>
-        <div class="skin-option" data-skin="partyvibe" data-name="Party Vibe">
+        </button>
+        <button class="skin-option" type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="partyvibe" data-name="Party Vibe">
           <img src="static/skins/partyvibe.svg" alt="Party Vibe Theme">
-        </div>
+        </button>
       </div>
     </div>
 
@@ -259,10 +259,10 @@
     <div class="session-summary hidden" id="sessionSummary"></div>
 
     <!-- Log Modal -->
-    <div id="logModal" class="modal hidden">
+    <div id="logModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
       <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Log Moment</h2>
+        <button type="button" class="modal-close" aria-label="Close">&times;</button>
+        <h2 id="logModalTitle">Log Moment</h2>
         <div class="form-group">
           <label for="momentInput">Enter or select an effect:</label>
           <input type="text" id="momentInput" list="effectsList" 
@@ -283,7 +283,6 @@
             <option value="Paranoid Thoughts"></option>
             <option value="Indescribable Sparkly Stillness"></option>
           </datalist>
-
         </div>
         <button id="saveLogMoment">Save</button>
       </div>
@@ -295,10 +294,10 @@
     </div>
 
     <!-- High Idea Modal -->
-    <div id="highIdeaModal" class="modal hidden">
+    <div id="highIdeaModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="highIdeaModalTitle">
       <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Document Your High Idea</h2>
+        <button type="button" class="modal-close" aria-label="Close">&times;</button>
+        <h2 id="highIdeaModalTitle">Document Your High Idea</h2>
         <div class="rich-text-controls">
           <button onclick="formatText('bold')"><b>B</b></button>
           <button onclick="formatText('italic')"><i>I</i></button>
@@ -310,10 +309,10 @@
     </div>
 
     <!-- Entertainment Modal -->
-    <div id="entertainmentModal" class="modal entertainment-modal hidden">
+    <div id="entertainmentModal" class="modal entertainment-modal hidden" role="dialog" aria-modal="true" aria-labelledby="entertainmentModalTitle">
       <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Entertainment Zone</h2>
+        <button type="button" class="modal-close" aria-label="Close">&times;</button>
+        <h2 id="entertainmentModalTitle">Entertainment Zone</h2>
         <div class="entertainment-links">
           <a href="https://highdeas.com/" target="_blank" class="entertainment-link">
             <h4>HighDeas</h4>
@@ -347,11 +346,11 @@
     </button>
 
     <!-- Share Modal -->
-    <div id="shareModalBackdrop" class="modal-backdrop hidden">
-      <div id="shareModal" class="modal hidden">
+    <div id="shareModalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <div id="shareModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
         <div class="modal-content">
-          <span class="close" id="closeShareModal">&times;</span>
-          <h2>Share Your Session</h2>
+          <button type="button" class="modal-close" id="closeShareModal" aria-label="Close">&times;</button>
+          <h2 id="shareModalTitle">Share Your Session</h2>
 
           <!-- Share Options -->
           <div class="share-options">

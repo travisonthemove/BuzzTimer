@@ -167,6 +167,28 @@ button .icon {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+.modal .modal-content {
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-close:focus-visible,
+.modal-close:hover {
+    outline: 2px solid var(--button-bg);
+    outline-offset: 2px;
+}
+
 /* Session Banner */
 .session-banner {
     margin-top: 1.5rem;

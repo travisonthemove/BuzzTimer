@@ -11,28 +11,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('resetBtn');
     const themeContainer = document.querySelector('.theme-container');
     const skinSelector = document.getElementById('skinSelector');
+    const skinOptionsGroup = document.querySelector('.skin-options');
     const timerSkin = document.getElementById('timerSkin');
-    const skinOptions = document.querySelectorAll('.skin-option');
+    const skinOptions = Array.from(document.querySelectorAll('.skin-option'));
     const themeToggle = document.getElementById('themeToggle');
     const logBtn = document.getElementById('logBtn');
     const logModal = document.getElementById('logModal');
     const momentInput = document.getElementById('momentInput');
     const saveLogMoment = document.getElementById('saveLogMoment');
     const logList = document.getElementById('logList');
-    const closeModalBtn = logModal.querySelector('.close');
     const highIdeaBtn = document.getElementById('highIdeaBtn');
     const highIdeaModal = document.getElementById('highIdeaModal');
     const richTextEditor = document.getElementById('richTextEditor');
     const saveHighIdea = document.getElementById('saveHighIdea');
-    const closeHighIdeaModalBtn = highIdeaModal.querySelector('.close');
     const entertainmentModal = document.getElementById('entertainmentModal');
-    const closeEntertainmentModal = entertainmentModal.querySelector('.close');
     const dismissEntertainment = document.getElementById('dismissEntertainment');
     const distractMeBtn = document.getElementById('distractMeBtn');
     const shareModalBackdrop = document.getElementById('shareModalBackdrop');
     const shareBtn = document.getElementById('shareBtn');
     const shareModal = document.getElementById('shareModal');
-    const closeShareModal = document.getElementById('closeShareModal');
     const shareMessage = document.getElementById('shareMessage');
     const sharePreview = document.getElementById('sharePreview');
     const simpleShareBtn = document.getElementById('simpleShareBtn');
@@ -45,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const darkModeToggle = document.getElementById('darkModeToggle');
     // ToDo  NEW: Grab the Settings button
     const settingsBtn = document.getElementById('settingsBtn');
+    const openModals = new Map();
 
 // A mapping from the data-skin values to a display-friendly name
     let currentSkin = 'classic';
@@ -195,7 +193,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         logList.innerHTML = '';
         console.log("Log list cleared");
 
-        hideElement(logModal);
+        closeModal('log');
         console.log("Log Moment modal hidden");
 
         timerContainer.focus();
@@ -204,50 +202,262 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     });
 
     themeToggle.addEventListener('click', () => {
-        if (skinSelector.classList.contains('hidden')) {
+        const isHidden = skinSelector.classList.contains('hidden');
+        if (isHidden) {
             showElement(skinSelector);
-            skinSelector.focus(); // Focus the panel now that it's visible
+            skinSelector.setAttribute('aria-hidden', 'false');
+            const activeIndex = skinOptions.findIndex(btn => btn.classList.contains('active'));
+            focusSkinOption(activeIndex >= 0 ? activeIndex : 0);
+            themeToggle.setAttribute('aria-expanded', 'true');
         } else {
             hideElement(skinSelector);
+            skinSelector.setAttribute('aria-hidden', 'true');
+            themeToggle.setAttribute('aria-expanded', 'false');
             timerContainer.focus();
         }
-        console.log("Theme selector toggled");
+        console.log('Theme selector toggled');
     });
 
-    skinOptions.forEach(option => {
+
+    const modalConfig = {
+        log: {
+            modal: logModal,
+            focusFirst: () => momentInput.focus(),
+        },
+        highIdea: {
+            modal: highIdeaModal,
+            focusFirst: () => richTextEditor.focus(),
+        },
+        entertainment: {
+            modal: entertainmentModal,
+            focusFirst: () => {
+                const closeBtn = entertainmentModal.querySelector('.modal-close');
+                if (closeBtn) {
+                    closeBtn.focus();
+                } else {
+                    entertainmentModal.focus();
+                }
+            },
+            closeOnBackdrop: true,
+            onOpen: () => document.body.classList.add('modal-open'),
+            onClose: () => document.body.classList.remove('modal-open'),
+        },
+        share: {
+            modal: shareModal,
+            backdrop: shareModalBackdrop,
+            focusFirst: () => shareMessage.focus(),
+        },
+    };
+
+    const trapFocus = (modal, event) => {
+        const focusableSelectors = [
+            'button', '[href]', 'input', 'select', 'textarea',
+            '[tabindex]:not([tabindex="-1"])'
+        ];
+        const focusable = Array.from(modal.querySelectorAll(focusableSelectors.join(',')))
+            .filter(el => !el.hasAttribute('disabled') && !el.classList.contains('hidden'));
+        if (focusable.length === 0) {
+            event.preventDefault();
+            modal.focus();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
+
+    const openModal = (key, opener) => {
+        const config = modalConfig[key];
+        if (!config) return;
+        const { modal, backdrop, focusFirst, onOpen } = config;
+        if (backdrop) {
+            showElement(backdrop);
+            backdrop.classList.remove('hidden');
+            backdrop.setAttribute('aria-hidden', 'false');
+        }
+        showElement(modal);
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        openModals.set(modal, opener || document.activeElement);
+        if (typeof onOpen === 'function') {
+            onOpen();
+        }
+        setTimeout(() => {
+            if (typeof focusFirst === 'function') {
+                focusFirst();
+            } else {
+                modal.focus();
+            }
+        }, 0);
+    };
+
+    const closeModal = (key) => {
+        const config = modalConfig[key];
+        if (!config) return;
+        const { modal, backdrop, onClose } = config;
+        hideElement(modal);
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        if (backdrop) {
+            hideElement(backdrop);
+            backdrop.classList.add('hidden');
+            backdrop.setAttribute('aria-hidden', 'true');
+        }
+        if (typeof onClose === 'function') {
+            onClose();
+        }
+        const opener = openModals.get(modal);
+        if (opener && typeof opener.focus === 'function') {
+            opener.focus();
+        }
+        openModals.delete(modal);
+    };
+
+    Object.entries(modalConfig).forEach(([key, config]) => {
+        const { modal, backdrop, closeOnBackdrop } = config;
+        if (!modal) return;
+
+        modal.setAttribute('tabindex', '-1');
+
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => closeModal(key));
+        }
+
+        modal.addEventListener('keydown', (event) => {
+            if (event.key === 'Tab') {
+                trapFocus(modal, event);
+            } else if (event.key === 'Escape') {
+                closeModal(key);
+            }
+        });
+
+        if (closeOnBackdrop) {
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closeModal(key);
+                }
+            });
+        }
+
+        if (backdrop) {
+            backdrop.setAttribute('aria-hidden', 'true');
+            backdrop.addEventListener('click', (event) => {
+                if (event.target === backdrop) {
+                    closeModal(key);
+                }
+            });
+        }
+    });
+
+    const focusSkinOption = (index) => {
+        skinOptions.forEach((btn, idx) => {
+            btn.tabIndex = idx === index ? 0 : -1;
+        });
+        skinOptions[index].focus();
+    };
+
+    const selectSkinOption = (option) => {
+        const optionId = option.id || `skin-option-${option.getAttribute('data-skin')}`;
+        option.id = optionId;
+        skinOptions.forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-checked', 'false');
+        });
+        option.classList.add('active');
+        option.setAttribute('aria-checked', 'true');
+        const selectedSkin = option.getAttribute('data-skin');
+        console.log(`Selected skin: ${selectedSkin}`);
+
+        const themes = ['theme-classic', 'theme-calm', 'theme-retro', 'theme-party'];
+        themes.forEach(theme => themeContainer.classList.remove(theme));
+
+        if (selectedSkin === 'calm') {
+            themeContainer.classList.add('theme-calm');
+        } else if (selectedSkin === 'retro') {
+            themeContainer.classList.add('theme-retro');
+        } else if (selectedSkin === 'partyvibe') {
+            themeContainer.classList.add('theme-party');
+        } else {
+            themeContainer.classList.add('theme-classic');
+        }
+
+        timerSkin.src = `static/skins/${selectedSkin}.svg`;
+
+        // Set the text in the p element
+        currentSkin = selectedSkin;
+        const friendlyName = themeNames[currentSkin] || 'Unknown';
+        activeThemeText.textContent = `Active Theme: ${friendlyName}`;
+
+        if (skinOptionsGroup) {
+            skinOptionsGroup.setAttribute('aria-activedescendant', option.id);
+        }
+
+        return selectedSkin;
+    };
+
+    skinOptions.forEach((option, index) => {
         option.addEventListener('click', (event) => {
             event.stopPropagation();
-
-            skinOptions.forEach(o => o.classList.remove('active'));
-            option.classList.add('active');
-
-            const selectedSkin = option.getAttribute('data-skin');
-            console.log(`Selected skin: ${selectedSkin}`);
-
-            const themes = ['theme-classic', 'theme-calm', 'theme-retro', 'theme-party'];
-            themes.forEach(theme => themeContainer.classList.remove(theme));
-
-            if (selectedSkin === 'calm') {
-                themeContainer.classList.add('theme-calm');
-            } else if (selectedSkin === 'retro') {
-                themeContainer.classList.add('theme-retro');
-            } else if (selectedSkin === 'partyvibe') {
-                themeContainer.classList.add('theme-party');
-            } else {
-                themeContainer.classList.add('theme-classic');
-            }
-
-            timerSkin.src = `static/skins/${selectedSkin}.svg`;
-
-// Set the text in the p element
-            currentSkin = selectedSkin;
-            const friendlyName = themeNames[currentSkin] || 'Unknown';
-            activeThemeText.textContent = `Active Theme: ${friendlyName}`;
-
+            focusSkinOption(index);
+            selectSkinOption(option);
             hideElement(skinSelector);
+            skinSelector.setAttribute('aria-hidden', 'true');
+            themeToggle.setAttribute('aria-expanded', 'false');
             timerContainer.focus();
         });
+
+        option.addEventListener('keydown', (event) => {
+            const currentIndex = skinOptions.indexOf(event.currentTarget);
+            let handled = false;
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                const nextIndex = (currentIndex + 1) % skinOptions.length;
+                focusSkinOption(nextIndex);
+                selectSkinOption(skinOptions[nextIndex]);
+                handled = true;
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                const prevIndex = (currentIndex - 1 + skinOptions.length) % skinOptions.length;
+                focusSkinOption(prevIndex);
+                selectSkinOption(skinOptions[prevIndex]);
+                handled = true;
+            } else if (event.key === 'Home') {
+                focusSkinOption(0);
+                selectSkinOption(skinOptions[0]);
+                handled = true;
+            } else if (event.key === 'End') {
+                const lastIndex = skinOptions.length - 1;
+                focusSkinOption(lastIndex);
+                selectSkinOption(skinOptions[lastIndex]);
+                handled = true;
+            } else if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+                selectSkinOption(option);
+                hideElement(skinSelector);
+                skinSelector.setAttribute('aria-hidden', 'true');
+                themeToggle.setAttribute('aria-expanded', 'false');
+                timerContainer.focus();
+                handled = true;
+            }
+
+            if (handled) {
+                event.preventDefault();
+            }
+        });
     });
+
+    const initialActiveOption = skinOptions.find(btn => btn.classList.contains('active'));
+    if (initialActiveOption) {
+        const optionId = initialActiveOption.id || `skin-option-${initialActiveOption.getAttribute('data-skin')}`;
+        initialActiveOption.id = optionId;
+        if (skinOptionsGroup) {
+            skinOptionsGroup.setAttribute('aria-activedescendant', optionId);
+        }
+    }
 
     setStartButtonState('start');
     updateTimerDisplay();
@@ -263,8 +473,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     }
 
     logBtn.addEventListener('click', () => {
-        showElement(logModal);
-        momentInput.focus();
+        openModal('log', logBtn);
         console.log("Log Moment modal opened");
     });
 
@@ -286,32 +495,21 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             showElement(logsSection);
 
             momentInput.value = '';
-            hideElement(logModal);
-            timerContainer.focus();
+            closeModal('log');
             console.log(`Log Moment saved: "${momentText}" at ${timeString}`);
         } else {
             console.log("Log Moment input is empty");
         }
     });
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !logModal.classList.contains('hidden')) {
-            hideElement(logModal);
-            timerContainer.focus();
-            console.log("Log Moment modal closed via Escape key");
-        }
-    });
-
     highIdeaBtn.addEventListener('click', () => {
-        showElement(highIdeaModal);
-        richTextEditor.focus();
+        openModal('highIdea', highIdeaBtn);
         console.log("High Idea modal opened");
     });
 
     saveHighIdea.addEventListener('click', () => {
         const ideaContent = richTextEditor.innerHTML.trim();
         if (ideaContent) {
-            // Use the timer's elapsed time instead of current wall clock time
             const timeString = formatTime(elapsedSeconds);
 
             const logEntry = document.createElement('div');
@@ -327,42 +525,25 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             showElement(logsSection);
 
             richTextEditor.innerHTML = '';
-            hideElement(highIdeaModal);
-            timerContainer.focus();
+            closeModal('highIdea');
             console.log(`High Idea saved: "${ideaContent}" at ${timeString}`);
         } else {
             console.log("High Idea content is empty");
         }
     });
 
-    const closeHighIdeaModal = () => {
-        hideElement(highIdeaModal);
-        timerContainer.focus();
-        console.log("High Idea modal closed");
-    };
-
-    closeHighIdeaModalBtn.addEventListener('click', closeHighIdeaModal);
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !highIdeaModal.classList.contains('hidden')) {
-            closeHighIdeaModal();
-            console.log("High Idea modal closed via Escape key");
-        }
+    distractMeBtn.addEventListener('click', () => {
+        openModal('entertainment', distractMeBtn);
     });
+
+    dismissEntertainment.addEventListener('click', () => closeModal('entertainment'));
 
     let shareType = 'simple'; 
 
     shareBtn.addEventListener('click', () => {
         console.log('Share button clicked!');
-        showElement(shareModal);
-        showElement(shareModalBackdrop);
+        openModal('share', shareBtn);
         updateSharePreview();
-    });
-
-    closeShareModal.addEventListener('click', () => {
-        hideElement(shareModal);
-        hideElement(shareModalBackdrop);
-        timerContainer.focus();
     });
 
     simpleShareBtn.addEventListener('click', () => {
@@ -426,53 +607,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     shareMessage.addEventListener('input', updateSharePreview);
 
-    shareModalBackdrop.addEventListener('click', (event) => {
-        if (event.target === shareModalBackdrop) {
-            hideElement(shareModal);
-            hideElement(shareModalBackdrop);
-            timerContainer.focus();
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !shareModal.classList.contains('hidden')) {
-            hideElement(shareModal);
-            hideElement(shareModalBackdrop);
-            timerContainer.focus();
-        }
-    });
-
-    const toggleModal = (show) => {
-        if (show) {
-            showElement(entertainmentModal);
-            document.body.classList.add('modal-open');
-            entertainmentModal.querySelector('.modal-content').setAttribute('tabindex', '-1');
-            entertainmentModal.querySelector('.modal-content').focus();
-        } else {
-            hideElement(entertainmentModal);
-            document.body.classList.remove('modal-open');
-            timerContainer.focus();
-        }
-    };
-
-    distractMeBtn.addEventListener('click', () => toggleModal(true));
-    closeEntertainmentModal.addEventListener('click', () => toggleModal(false));
-    dismissEntertainment.addEventListener('click', () => toggleModal(false));
-
-    entertainmentModal.addEventListener('click', (event) => {
-        if (event.target === entertainmentModal) toggleModal(false);
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !entertainmentModal.classList.contains('hidden')) {
-            toggleModal(false);
-        }
-    });
-
     const updateDarkModeToggle = () => {
         const isLightMode = document.body.classList.contains('light-mode');
         darkModeToggle.dataset.mode = isLightMode ? 'light' : 'dark';
-        darkModeToggle.setAttribute('aria-label', isLightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+        darkModeToggle.setAttribute('aria-label', isLightMode ? 'Switch to dark mode' : 'Switch to light mode');
+        darkModeToggle.setAttribute('aria-pressed', isLightMode ? 'true' : 'false');
         return isLightMode;
     };
 
