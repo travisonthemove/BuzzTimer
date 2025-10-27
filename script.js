@@ -91,13 +91,19 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         element.classList.remove('hidden');
     };
 
+    const setStartButtonState = (state) => {
+        startBtn.dataset.state = state;
+        const label = state === 'pause' ? 'Pause' : 'Start';
+        startBtn.setAttribute('aria-label', label);
+    };
+
     const startTimer = () => {
         if (!isRunning) {
             timerInterval = setInterval(() => {
                 elapsedSeconds++;
                 updateTimerDisplay();
             }, 1000);
-            startBtn.textContent = 'Pause';
+            setStartButtonState('pause');
             isRunning = true;
             console.log('Timer started');
         }
@@ -105,7 +111,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     const pauseTimer = () => {
         clearInterval(timerInterval);
-        startBtn.textContent = 'Start';
+        setStartButtonState('start');
         isRunning = false;
         console.log('Timer paused');
     };
@@ -168,7 +174,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         clearInterval(timerInterval);
         elapsedSeconds = 0;
         updateTimerDisplay();
-        startBtn.textContent = 'Start';
+        setStartButtonState('start');
         isRunning = false;
         console.log('Timer reset');
 
@@ -243,6 +249,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         });
     });
 
+    setStartButtonState('start');
     updateTimerDisplay();
     console.log('Timer and theme logic restored.');
 
@@ -462,11 +469,19 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
     });
 
+    const updateDarkModeToggle = () => {
+        const isLightMode = document.body.classList.contains('light-mode');
+        darkModeToggle.dataset.mode = isLightMode ? 'light' : 'dark';
+        darkModeToggle.setAttribute('aria-label', isLightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+        return isLightMode;
+    };
+
     // Dark/Light Mode Toggle
     darkModeToggle.addEventListener('click', () => {
         document.body.classList.toggle('light-mode');
-        const isLight = document.body.classList.contains('light-mode');
-        darkModeToggle.innerHTML = isLight ? '🌙' : '☀️';
+        const isLight = updateDarkModeToggle();
         console.log(`Light mode is now ${isLight ? 'ON' : 'OFF'}`);
     });
+
+    updateDarkModeToggle();
 });
