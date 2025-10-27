@@ -37,11 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareTwitter = document.getElementById('shareTwitter');
     const shareFacebook = document.getElementById('shareFacebook');
     const copyLink = document.getElementById('copyLink');
+    const shareFeedback = document.getElementById('shareFeedback');
     const productName = document.getElementById('productName');
     const timerContainer = document.getElementById('timerContainer');
     const darkModeToggle = document.getElementById('darkModeToggle');
     // ToDo  NEW: Grab the Settings button
     const settingsBtn = document.getElementById('settingsBtn');
+    const appAlerts = document.getElementById('appAlerts');
+    const timerLive = document.getElementById('timerLive');
     const openModals = new Map();
 
 // A mapping from the data-skin values to a display-friendly name
@@ -69,6 +72,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     let elapsedSeconds = 0;
     let isRunning = false;
     let sessionDetailsSaved = false;
+    let lastAnnouncedMinute = -1;
+    let resetConfirmPending = false;
+    let resetConfirmTimeout;
 
     const formatTime = (seconds) => {
         const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
@@ -89,6 +95,48 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         element.classList.remove('hidden');
     };
 
+    const showAppAlert = (message) => {
+        if (!appAlerts) return;
+        appAlerts.classList.add('is-visible');
+        appAlerts.textContent = message;
+    };
+
+    const clearAppAlert = () => {
+        if (!appAlerts) return;
+        appAlerts.textContent = '';
+        appAlerts.classList.remove('is-visible');
+    };
+
+    const showShareFeedback = (message) => {
+        if (!shareFeedback) return;
+        shareFeedback.classList.add('is-visible');
+        shareFeedback.textContent = message;
+    };
+
+    const clearShareFeedback = () => {
+        if (!shareFeedback) return;
+        shareFeedback.textContent = '';
+        shareFeedback.classList.remove('is-visible');
+    };
+
+    const updateTimerAnnouncement = () => {
+        if (!timerLive) return;
+        const minutes = Math.floor(elapsedSeconds / 60);
+        if (minutes === lastAnnouncedMinute) {
+            return;
+        }
+        lastAnnouncedMinute = minutes;
+        let announcement;
+        if (minutes === 0) {
+            announcement = 'Timer 0 minutes';
+        } else if (minutes === 1) {
+            announcement = 'Timer 1 minute';
+        } else {
+            announcement = `Timer ${minutes} minutes`;
+        }
+        timerLive.textContent = announcement;
+    };
+
     const setStartButtonState = (state) => {
         startBtn.dataset.state = state;
         const label = state === 'pause' ? 'Pause' : 'Start';
@@ -100,6 +148,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             timerInterval = setInterval(() => {
                 elapsedSeconds++;
                 updateTimerDisplay();
+                updateTimerAnnouncement();
             }, 1000);
             setStartButtonState('pause');
             isRunning = true;
@@ -163,15 +212,30 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     });
 
     resetBtn.addEventListener('click', () => {
-        const confirmReset = confirm("Are you sure you want to reset?");
-        if (!confirmReset) {
-            console.log("Reset canceled by user");
+        if (!resetConfirmPending) {
+            resetConfirmPending = true;
+            showAppAlert('Press Reset again within 5 seconds to confirm.');
+            if (resetConfirmTimeout) {
+                clearTimeout(resetConfirmTimeout);
+            }
+            resetConfirmTimeout = setTimeout(() => {
+                resetConfirmPending = false;
+                clearAppAlert();
+            }, 5000);
             return;
+        }
+
+        resetConfirmPending = false;
+        if (resetConfirmTimeout) {
+            clearTimeout(resetConfirmTimeout);
+            resetConfirmTimeout = null;
         }
 
         clearInterval(timerInterval);
         elapsedSeconds = 0;
+        lastAnnouncedMinute = -1;
         updateTimerDisplay();
+        updateTimerAnnouncement();
         setStartButtonState('start');
         isRunning = false;
         console.log('Timer reset');
@@ -194,9 +258,12 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         console.log("Log list cleared");
 
         closeModal('log');
-        console.log("Log Moment modal hidden");
+        closeModal('highIdea');
+        closeModal('share');
+        closeModal('entertainment');
 
         timerContainer.focus();
+        showAppAlert('Session reset. Timer 0 minutes.');
 
         document.getElementById('expandSessionBtn').addEventListener('click', expandSessionDetails);
     });
@@ -222,11 +289,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     const modalConfig = {
         log: {
             modal: logModal,
-            focusFirst: () => momentInput.focus(),
+            focusFirst: () => saveLogMoment.focus(),
         },
         highIdea: {
             modal: highIdeaModal,
-            focusFirst: () => richTextEditor.focus(),
+            focusFirst: () => saveHighIdea.focus(),
         },
         entertainment: {
             modal: entertainmentModal,
@@ -245,7 +312,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         share: {
             modal: shareModal,
             backdrop: shareModalBackdrop,
-            focusFirst: () => shareMessage.focus(),
+            focusFirst: () => copyLink.focus(),
+            onOpen: () => clearShareFeedback(),
+            onClose: () => clearShareFeedback(),
         },
     };
 
@@ -461,6 +530,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     setStartButtonState('start');
     updateTimerDisplay();
+    updateTimerAnnouncement();
     console.log('Timer and theme logic restored.');
 
     // ========== SETTINGS BUTTON EVENT ==========
@@ -473,6 +543,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     }
 
     logBtn.addEventListener('click', () => {
+        clearAppAlert();
         openModal('log', logBtn);
         console.log("Log Moment modal opened");
     });
@@ -496,13 +567,16 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
             momentInput.value = '';
             closeModal('log');
+            showAppAlert(`Moment logged at ${timeString}.`);
             console.log(`Log Moment saved: "${momentText}" at ${timeString}`);
         } else {
+            showAppAlert('Enter a moment before saving.');
             console.log("Log Moment input is empty");
         }
     });
 
     highIdeaBtn.addEventListener('click', () => {
+        clearAppAlert();
         openModal('highIdea', highIdeaBtn);
         console.log("High Idea modal opened");
     });
@@ -526,8 +600,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
             richTextEditor.innerHTML = '';
             closeModal('highIdea');
+            showAppAlert(`High idea saved at ${timeString}.`);
             console.log(`High Idea saved: "${ideaContent}" at ${timeString}`);
         } else {
+            showAppAlert('Add some notes before saving your idea.');
             console.log("High Idea content is empty");
         }
     });
@@ -551,6 +627,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         updateSharePreview();
         simpleShareBtn.classList.add('active');
         detailedShareBtn.classList.remove('active');
+        clearShareFeedback();
     });
 
     detailedShareBtn.addEventListener('click', () => {
@@ -558,16 +635,17 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         updateSharePreview();
         detailedShareBtn.classList.add('active');
         simpleShareBtn.classList.remove('active');
+        clearShareFeedback();
     });
 
     const updateSharePreview = () => {
         const customMessage = shareMessage.value.trim();
-        const theme = themeContainer.classList[1] || 'Classic Theme';
+        const friendlyTheme = `${themeNames[currentSkin] || 'Classic'} Theme`;
 
         if (shareType === 'simple') {
             sharePreview.textContent = `
                 ${customMessage}
-                Theme: ${theme}
+                Theme: ${friendlyTheme}
                 Learn more at BuzzTimer.com
             `.trim();
         } else {
@@ -578,7 +656,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
             sharePreview.textContent = `
                 ${customMessage}
-                Theme: ${theme}
+                Theme: ${friendlyTheme}
                 Strain: ${strainInfo}
                 Logged Moments:\n${loggedMoments}
                 Learn more at BuzzTimer.com
@@ -601,11 +679,16 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     copyLink.addEventListener('click', () => {
         const shareText = sharePreview.textContent.trim();
         navigator.clipboard.writeText(shareText).then(() => {
-            alert('Link copied to clipboard!');
+            showShareFeedback('Link copied to clipboard.');
+        }).catch(() => {
+            showShareFeedback('Unable to copy automatically. Copy the text manually.');
         });
     });
 
-    shareMessage.addEventListener('input', updateSharePreview);
+    shareMessage.addEventListener('input', () => {
+        updateSharePreview();
+        clearShareFeedback();
+    });
 
     const updateDarkModeToggle = () => {
         const isLightMode = document.body.classList.contains('light-mode');

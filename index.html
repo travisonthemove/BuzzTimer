@@ -23,8 +23,11 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 
+  <main id="main">
   <h1>BuzzTimer - Track your buzz like a pro</h1>
+  <div id="appAlerts" class="status-message" aria-live="polite"></div>
   <div class="app-container">
     <img src="static/icons/logo.svg" alt="BuzzTimer Logo" 
          style="width: 60px; height: 60px; margin: 0 auto; display: block;">
@@ -131,6 +134,7 @@
         <img src="static/skins/classic.svg" alt="Timer Skin" 
              class="timer-skin" id="timerSkin">
         <div class="timer-display" id="timer">00:00</div>
+        <div id="timerLive" class="sr-only" aria-live="polite"></div>
       </div>
 
       <!-- Lower Controls -->
@@ -368,6 +372,7 @@
           <div id="sharePreview" class="share-preview">
             <!-- This area will dynamically show the share content -->
           </div>
+          <div id="shareFeedback" class="status-message" aria-live="polite"></div>
 
           <!-- Share Actions -->
           <button id="shareTwitter" class="share-btn">Share on Twitter</button>
@@ -377,6 +382,7 @@
       </div>
     </div>
   </div> <!-- End app-container -->
+  </main>
 
   <!-- Ensure your main JS is loaded AFTER Tippy and Popper -->
   <script src="script.js" defer></script>

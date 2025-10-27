@@ -52,6 +52,52 @@ body {
     transition: background-color 0.5s ease, color 0.5s ease;
 }
 
+.skip-link {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border-radius: 0.5rem;
+    transform: translateY(-200%);
+    transition: transform 0.3s ease;
+    z-index: 2000;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.status-message {
+    display: none;
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background-color: rgba(46, 204, 113, 0.15);
+    color: var(--text-color);
+}
+
+.status-message.is-visible {
+    display: block;
+}
+
+.modal .status-message {
+    margin-top: 1rem;
+}
+
 .timer-container {
     position: relative;
     width: 300px;
