@@ -151,9 +151,90 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     if (!TimerCtor) {
         throw new Error('TimerEngine module failed to load.');
     }
-    const timer = new TimerCtor({
-        onTick: handleTimerTick,
-    });
+    const timer = new TimerCtor(
+        { onTick: handleTimerTick },
+        { hiddenInterval: 400 }
+    );
+
+    const TIMER_STORAGE_KEY = 'buzzTimer.state';
+
+    const persistTimerState = (overrides = {}) => {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return;
+        }
+        try {
+            const isRunning = timer.isRunning();
+            const baseState = {
+                isRunning,
+                accumulatedMs: Math.max(0, timer.getElapsedMs()),
+                startWallClock: isRunning ? Date.now() : null,
+            };
+            const stateToPersist = { ...baseState, ...overrides };
+            window.localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(stateToPersist));
+        } catch (error) {
+            console.warn('BuzzTimer: unable to persist timer state', error);
+        }
+    };
+
+    const restoreTimerState = () => {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return false;
+        }
+        try {
+            const raw = window.localStorage.getItem(TIMER_STORAGE_KEY);
+            if (!raw) {
+                return false;
+            }
+            const stored = JSON.parse(raw);
+            if (!stored || typeof stored !== 'object') {
+                return false;
+            }
+            let accumulatedMs = Number(stored.accumulatedMs);
+            if (!Number.isFinite(accumulatedMs) || accumulatedMs < 0) {
+                accumulatedMs = 0;
+            }
+            const wasRunning = stored.isRunning === true;
+            const startWallClock = typeof stored.startWallClock === 'number' ? stored.startWallClock : null;
+            if (wasRunning && startWallClock) {
+                const delta = Date.now() - startWallClock;
+                if (delta > 0) {
+                    accumulatedMs += delta;
+                }
+            }
+            lastAnnouncedMinute = -1;
+            timer.setState({
+                accumulatedMs,
+                isRunning: wasRunning,
+            });
+            persistTimerState();
+            return true;
+        } catch (error) {
+            console.warn('BuzzTimer: unable to restore timer state', error);
+            return false;
+        }
+    };
+
+    const syncTimerDisplay = () => {
+        handleTimerTick(timer.getElapsedMs());
+    };
+
+    const handleVisibilitySync = () => {
+        timer.handleVisibilityChange();
+        syncTimerDisplay();
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            persistTimerState();
+        }
+    };
+
+    const handleWindowBlur = () => {
+        syncTimerDisplay();
+        persistTimerState();
+    };
+
+    const handleWindowFocus = () => {
+        timer.handleVisibilityChange();
+        syncTimerDisplay();
+    };
 
     const setStartButtonState = (state) => {
         startBtn.dataset.state = state;
@@ -167,6 +248,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
         timer.start();
         setStartButtonState('pause');
+        persistTimerState();
         console.log('Timer started');
     };
 
@@ -176,6 +258,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
         timer.pause();
         setStartButtonState('start');
+        persistTimerState({ startWallClock: null });
         console.log('Timer paused');
     };
 
@@ -250,6 +333,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         lastAnnouncedMinute = -1;
         timer.reset();
         setStartButtonState('start');
+        persistTimerState({ isRunning: false, startWallClock: null, accumulatedMs: 0 });
         console.log('Timer reset');
 
         sessionDetailsSaved = false;
@@ -540,8 +624,20 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
     }
 
-    handleTimerTick(timer.getElapsedMs());
-    setStartButtonState('start');
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilitySync);
+    }
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('beforeunload', () => {
+        persistTimerState();
+    });
+
+    const restored = restoreTimerState();
+    if (!restored) {
+        handleTimerTick(timer.getElapsedMs());
+    }
+    setStartButtonState(timer.isRunning() ? 'pause' : 'start');
     console.log('Timer and theme logic restored.');
 
     // ========== SETTINGS BUTTON EVENT ==========
