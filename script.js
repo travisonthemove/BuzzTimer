@@ -123,10 +123,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         shareFeedback.classList.remove('is-visible');
     };
 
-    const updateTimerAnnouncement = () => {
+    const updateTimerAnnouncement = (force = false) => {
         if (!timerLive) return;
-        const minutes = Math.floor(currentElapsedMs / 60000);
-        if (minutes === lastAnnouncedMinute) {
+        const minutes = Math.max(0, Math.floor(currentElapsedMs / 60000));
+        if (!force && minutes === lastAnnouncedMinute) {
             return;
         }
         lastAnnouncedMinute = minutes;
