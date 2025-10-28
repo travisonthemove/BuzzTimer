@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareFeedback = document.getElementById('shareFeedback');
     const productName = document.getElementById('productName');
     const timerContainer = document.getElementById('timerContainer');
+    const timerDisplay = document.getElementById('timer');
     const darkModeToggle = document.getElementById('darkModeToggle');
     // ToDo  NEW: Grab the Settings button
     const settingsBtn = document.getElementById('settingsBtn');
@@ -68,13 +69,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     });
 
     // Timer Variables
-    let timerInterval;
-    let elapsedSeconds = 0;
-    let isRunning = false;
     let sessionDetailsSaved = false;
     let lastAnnouncedMinute = -1;
     let resetConfirmPending = false;
     let resetConfirmTimeout;
+    let currentElapsedMs = 0;
 
     const formatTime = (seconds) => {
         const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
@@ -83,8 +82,13 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         return `${hrs}:${mins}:${secs}`;
     };
 
+    const getElapsedSeconds = () => Math.floor(currentElapsedMs / 1000);
+
     const updateTimerDisplay = () => {
-        document.getElementById('timer').textContent = formatTime(elapsedSeconds);
+        if (!timerDisplay) {
+            return;
+        }
+        timerDisplay.textContent = formatTime(getElapsedSeconds());
     };
 
     const hideElement = (element) => {
@@ -121,7 +125,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     const updateTimerAnnouncement = () => {
         if (!timerLive) return;
-        const minutes = Math.floor(elapsedSeconds / 60);
+        const minutes = Math.floor(currentElapsedMs / 60000);
         if (minutes === lastAnnouncedMinute) {
             return;
         }
@@ -137,6 +141,20 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         timerLive.textContent = announcement;
     };
 
+    const handleTimerTick = (elapsedMs) => {
+        currentElapsedMs = Math.max(0, elapsedMs);
+        updateTimerDisplay();
+        updateTimerAnnouncement();
+    };
+
+    const TimerCtor = window.TimerEngine || globalThis.TimerEngine;
+    if (!TimerCtor) {
+        throw new Error('TimerEngine module failed to load.');
+    }
+    const timer = new TimerCtor({
+        onTick: handleTimerTick,
+    });
+
     const setStartButtonState = (state) => {
         startBtn.dataset.state = state;
         const label = state === 'pause' ? 'Pause' : 'Start';
@@ -144,22 +162,20 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     };
 
     const startTimer = () => {
-        if (!isRunning) {
-            timerInterval = setInterval(() => {
-                elapsedSeconds++;
-                updateTimerDisplay();
-                updateTimerAnnouncement();
-            }, 1000);
-            setStartButtonState('pause');
-            isRunning = true;
-            console.log('Timer started');
+        if (timer.isRunning()) {
+            return;
         }
+        timer.start();
+        setStartButtonState('pause');
+        console.log('Timer started');
     };
 
     const pauseTimer = () => {
-        clearInterval(timerInterval);
+        if (!timer.isRunning()) {
+            return;
+        }
+        timer.pause();
         setStartButtonState('start');
-        isRunning = false;
         console.log('Timer paused');
     };
 
@@ -193,7 +209,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
         showElement(sessionBanner);
 
-        if (!isRunning) {
+        if (!timer.isRunning()) {
             startTimer();
         }
     });
@@ -204,7 +220,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             return;
         }
 
-        if (!isRunning) {
+        if (!timer.isRunning()) {
             startTimer();
         } else {
             pauseTimer();
@@ -231,13 +247,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             resetConfirmTimeout = null;
         }
 
-        clearInterval(timerInterval);
-        elapsedSeconds = 0;
         lastAnnouncedMinute = -1;
-        updateTimerDisplay();
-        updateTimerAnnouncement();
+        timer.reset();
         setStartButtonState('start');
-        isRunning = false;
         console.log('Timer reset');
 
         sessionDetailsSaved = false;
@@ -528,9 +540,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
     }
 
+    handleTimerTick(timer.getElapsedMs());
     setStartButtonState('start');
-    updateTimerDisplay();
-    updateTimerAnnouncement();
     console.log('Timer and theme logic restored.');
 
     // ========== SETTINGS BUTTON EVENT ==========
@@ -551,7 +562,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     saveLogMoment.addEventListener('click', () => {
         const momentText = momentInput.value.trim();
         if (momentText) {
-            const timeString = formatTime(elapsedSeconds);
+            const timeString = formatTime(getElapsedSeconds());
 
             const logEntry = document.createElement('div');
             logEntry.classList.add('log-entry');
@@ -584,7 +595,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     saveHighIdea.addEventListener('click', () => {
         const ideaContent = richTextEditor.innerHTML.trim();
         if (ideaContent) {
-            const timeString = formatTime(elapsedSeconds);
+            const timeString = formatTime(getElapsedSeconds());
 
             const logEntry = document.createElement('div');
             logEntry.classList.add('log-entry');
