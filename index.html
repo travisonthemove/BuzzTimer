@@ -75,16 +75,21 @@
           </svg>
         </button>
 
-        <!-- Settings (new button) -->
-        <button id="settingsBtn"
-                type="button"
-                aria-label="Settings"
-                data-action="open-settings"
-                data-tippy-content="ToDo: Open Settings.">
-          <svg class="icon icon-gear" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-            <path d="M19.14 12.94a7.2 7.2 0 000-1.88l2.03-1.58-1.5-2.6-2.39.78a6.1 6.1 0 00-1.62-.94L15.5 3h-3l-.16 2.72a6.1 6.1 0 00-1.62.94l-2.39-.78-1.5 2.6 2.03 1.58a6.1 6.1 0 000 1.88l-2.03 1.58 1.5 2.6 2.39-.78a6.1 6.1 0 001.62.94L12.5 21h3l.16-2.72a6.1 6.1 0 001.62-.94l2.39.78 1.5-2.6zm-7.14.56a2.5 2.5 0 112.5-2.5 2.5 2.5 0 01-2.5 2.5z" fill="currentColor" />
-          </svg>
-        </button>
+        <!-- Settings -->
+        <div class="settings-wrapper">
+          <button id="settingsBtn"
+                  type="button"
+                  aria-label="Settings"
+                  aria-haspopup="dialog"
+                  aria-expanded="false"
+                  aria-controls="settingsMenu"
+                  data-action="open-settings"
+                  data-tippy-content="Open settings.">
+            <svg class="icon icon-gear" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+              <path d="M19.14 12.94a7.2 7.2 0 000-1.88l2.03-1.58-1.5-2.6-2.39.78a6.1 6.1 0 00-1.62-.94L15.5 3h-3l-.16 2.72a6.1 6.1 0 00-1.62.94l-2.39-.78-1.5 2.6 2.03 1.58a6.1 6.1 0 000 1.88l-2.03 1.58 1.5 2.6 2.39-.78a6.1 6.1 0 001.62-.94L12.5 21h3l.16-2.72a6.1 6.1 0 001.62-.94l2.39.78 1.5-2.6zm-7.14.56a2.5 2.5 0 112.5-2.5 2.5 2.5 0 01-2.5 2.5z" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
       </div>
       <!-- Upper Controls -->
       <div class="upper-controls">
@@ -262,6 +267,130 @@
 
     <div class="session-summary hidden" id="sessionSummary"></div>
 
+    <!-- Settings Modal -->
+    <div id="settingsBackdrop" class="modal-backdrop hidden" aria-hidden="true"></div>
+    <div id="settingsMenu"
+         class="modal hidden settings-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="settingsTitle"
+         aria-describedby="settingsStatus"
+         aria-hidden="true">
+      <div class="modal-content settings-menu">
+        <button type="button" class="modal-close" id="closeSettingsModal" aria-label="Close">&times;</button>
+        <h2 id="settingsTitle" tabindex="-1">Settings</h2>
+        <form id="settingsForm" novalidate>
+          <section class="menu-section" aria-labelledby="settingsVisualTitle">
+            <p id="settingsVisualTitle" class="menu-title">Visual</p>
+            <label class="menu-row" for="settingsTheme">
+              <span>Theme</span>
+              <select id="settingsTheme" name="theme" aria-label="Select timer theme">
+                <option value="classic">Classic</option>
+                <option value="calm">Calm</option>
+                <option value="retro">Retro</option>
+                <option value="partyvibe">Party Vibe</option>
+              </select>
+            </label>
+            <label class="menu-checkbox" for="settingsPulseGlow">
+              <input type="checkbox" id="settingsPulseGlow" name="enablePulseGlow">
+              <span>Enable pulse glow while running</span>
+            </label>
+          </section>
+
+          <section class="menu-section" aria-labelledby="settingsAudioTitle">
+            <p id="settingsAudioTitle" class="menu-title">Audio</p>
+            <label class="menu-checkbox" for="settingsEnableBeep">
+              <input type="checkbox" id="settingsEnableBeep" name="enableBeep">
+              <span>Play timer cadence beep</span>
+            </label>
+            <div class="menu-row range-row">
+              <label for="settingsBeepVolume">
+                <span>Beep volume</span>
+              </label>
+              <input type="range"
+                     id="settingsBeepVolume"
+                     name="beepVolume"
+                     min="0"
+                     max="1"
+                     step="0.05"
+                     aria-describedby="settingsBeepVolumeValue">
+              <span id="settingsBeepVolumeValue" class="range-value">60%</span>
+            </div>
+          </section>
+
+          <section class="menu-section" aria-labelledby="settingsBehaviorTitle">
+            <p id="settingsBehaviorTitle" class="menu-title">Behavior</p>
+            <label class="menu-checkbox" for="settingsAutoStart">
+              <input type="checkbox" id="settingsAutoStart" name="autoStart">
+              <span>Auto-start timer after saving details</span>
+            </label>
+            <label class="menu-checkbox" for="settingsConfirmReset">
+              <input type="checkbox" id="settingsConfirmReset" name="confirmReset">
+              <span>Require reset confirmation</span>
+            </label>
+            <label class="menu-row" for="historySizeSelect">
+              <span>History size</span>
+              <input type="number"
+                     id="historySizeSelect"
+                     name="historyRetention"
+                     min="0"
+                     max="20"
+                     step="1"
+                     aria-label="Number of sessions to keep in history">
+            </label>
+            <label class="menu-row" for="announceCadence">
+              <span>Timer announcements</span>
+              <select id="announceCadence"
+                      name="announceCadence"
+                      aria-label="Timer announcement cadence">
+                <option value="off">Off</option>
+                <option value="1m">Every minute</option>
+                <option value="5m">Every 5 minutes</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="menu-section" aria-labelledby="settingsAccessibilityTitle">
+            <p id="settingsAccessibilityTitle" class="menu-title">Accessibility</p>
+            <label class="menu-checkbox" for="settingsReduceMotion">
+              <input type="checkbox" id="settingsReduceMotion" name="reduceMotionRespect">
+              <span>Respect reduced-motion preference</span>
+            </label>
+          </section>
+
+          <section class="menu-section" aria-labelledby="settingsHistoryTitle">
+            <p id="settingsHistoryTitle" class="menu-title">History</p>
+            <button id="openHistory"
+                    type="button"
+                    class="menu-action"
+                    aria-label="Open previous sessions">
+              Previous Sessions
+            </button>
+          </section>
+
+          <section class="menu-section" aria-labelledby="settingsAccountTitle">
+            <p id="settingsAccountTitle" class="menu-title">Account</p>
+            <button id="accountBtn"
+                    type="button"
+                    class="menu-action"
+                    aria-label="Account coming soon">
+              Coming Soon
+            </button>
+          </section>
+
+          <div class="settings-actions">
+            <button type="button" id="settingsCancel" class="secondary-btn">
+              Cancel
+            </button>
+            <button type="submit" id="settingsSave" class="primary-btn">
+              Save Settings
+            </button>
+          </div>
+        </form>
+        <div id="settingsStatus" class="sr-only" aria-live="polite"></div>
+      </div>
+    </div>
+
     <!-- Log Modal -->
     <div id="logModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
       <div class="modal-content">
@@ -349,6 +478,21 @@
       </svg>
     </button>
 
+    <!-- History Modal -->
+    <div id="historyBackdrop" class="modal-backdrop hidden"></div>
+    <div id="historyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+      <div class="modal-content">
+        <h2 id="historyTitle">Previous Sessions</h2>
+        <div id="historyEmpty" class="hidden" aria-live="polite">No saved sessions yet.</div>
+        <ul id="historyList" class="history-list" aria-describedby="historyHelp"></ul>
+        <p id="historyHelp" class="sr-only">Activate a session to expand details. Use Tab to move between items and Escape to close.</p>
+        <div class="history-actions">
+          <button id="exportHistory" class="share-btn" aria-label="Export history as JSON">Export JSON</button>
+          <button id="closeHistory" class="share-btn" aria-label="Close history">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Share Modal -->
     <div id="shareModalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
       <div id="shareModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
@@ -386,6 +530,7 @@
 
   <!-- Timer engine and main script -->
   <script src="timerEngine.js" defer></script>
+  <script src="settingsStore.js" defer></script>
   <script src="script.js" defer></script>
 </body>
 </html>

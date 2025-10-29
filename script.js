@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     console.log("Script successfully loaded and executed");
 
     // DOM Elements
@@ -42,10 +42,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const timerContainer = document.getElementById('timerContainer');
     const timerDisplay = document.getElementById('timer');
     const darkModeToggle = document.getElementById('darkModeToggle');
-    // ToDo  NEW: Grab the Settings button
+    // Settings & history controls
     const settingsBtn = document.getElementById('settingsBtn');
+    const settingsMenu = document.getElementById('settingsMenu');
+    const settingsBackdrop = document.getElementById('settingsBackdrop');
+    const settingsForm = document.getElementById('settingsForm');
+    const settingsCancelBtn = document.getElementById('settingsCancel');
+    const settingsSaveBtn = document.getElementById('settingsSave');
+    const closeSettingsModalBtn = document.getElementById('closeSettingsModal');
+    const themeSelect = document.getElementById('settingsTheme');
+    const pulseGlowToggle = document.getElementById('settingsPulseGlow');
+    const enableBeepToggle = document.getElementById('settingsEnableBeep');
+    const beepVolumeInput = document.getElementById('settingsBeepVolume');
+    const beepVolumeValue = document.getElementById('settingsBeepVolumeValue');
+    const autoStartToggle = document.getElementById('settingsAutoStart');
+    const confirmResetToggle = document.getElementById('settingsConfirmReset');
+    const reduceMotionToggle = document.getElementById('settingsReduceMotion');
+    const historySizeInput = document.getElementById('historySizeSelect');
+    const announceCadenceSelect = document.getElementById('announceCadence');
+    const openHistoryButton = document.getElementById('openHistory');
+    const accountBtn = document.getElementById('accountBtn');
+    const settingsLiveRegion = document.getElementById('settingsStatus');
+    const updateBeepVolumeLabel = () => {
+        if (!beepVolumeInput || !beepVolumeValue) {
+            return;
+        }
+        const raw = parseFloat(beepVolumeInput.value);
+        const percent = Number.isFinite(raw) ? Math.round(raw * 100) : Math.round((appSettings?.beepVolume ?? 0.6) * 100);
+        beepVolumeValue.textContent = `${percent}%`;
+    };
     const appAlerts = document.getElementById('appAlerts');
     const timerLive = document.getElementById('timerLive');
+    const historyModal = document.getElementById('historyModal');
+    const historyBackdrop = document.getElementById('historyBackdrop');
+    const historyList = document.getElementById('historyList');
+    const historyEmpty = document.getElementById('historyEmpty');
+    const closeHistoryBtn = document.getElementById('closeHistory');
+    const exportHistoryBtn = document.getElementById('exportHistory');
+    const historyHelp = document.getElementById('historyHelp');
     const openModals = new Map();
 
 // A mapping from the data-skin values to a display-friendly name
@@ -74,6 +108,143 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     let resetConfirmPending = false;
     let resetConfirmTimeout;
     let currentElapsedMs = 0;
+    let beepAudioContext = null;
+
+    const LEGACY_SETTINGS_KEYS = Object.freeze({
+        historyRetention: 'bt:retention',
+        announceCadence: 'bt:announceCadence',
+        theme: 'bt:lastTheme',
+        startupTheme: 'bt:startupTheme',
+    });
+
+    const SettingsStore = window.SettingsStore;
+    if (!SettingsStore) {
+        throw new Error('BuzzTimer: SettingsStore module failed to load.');
+    }
+
+    const SETTINGS_STORAGE_KEY = SettingsStore.SETTINGS_STORAGE_KEY;
+    const DEFAULT_APP_SETTINGS = SettingsStore.DEFAULT_SETTINGS;
+    const migrateSettings = SettingsStore.migrateSettings;
+    const loadSettingsFromStore = SettingsStore.loadSettings;
+    const saveSettingsToStore = SettingsStore.saveSettings;
+
+    const HISTORY_STORAGE_KEY = 'bt:sessions';
+
+    const ANNOUNCEMENT_STEPS = Object.freeze({
+        off: 0,
+        '1m': 1,
+        '5m': 5,
+    });
+
+    const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
+
+    const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+    const safeStorageGet = (key) => {
+        if (!canUseStorage()) {
+            return null;
+        }
+        try {
+            return window.localStorage.getItem(key);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to read storage key', key, error);
+            return null;
+        }
+    };
+
+    const safeStorageSet = (key, value) => {
+        if (!canUseStorage()) {
+            return;
+        }
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to persist storage key', key, error);
+        }
+    };
+
+    const safeStorageRemove = (key) => {
+        if (!canUseStorage()) {
+            return;
+        }
+        try {
+            window.localStorage.removeItem(key);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to remove storage key', key, error);
+        }
+    };
+
+    const safeStorageParse = (key) => {
+        const raw = safeStorageGet(key);
+        if (!raw) {
+            return null;
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to parse storage key', key, error);
+            return null;
+        }
+    };
+
+    const settingsStorageAdapter = {
+        getItem: (key) => safeStorageGet(key),
+        setItem: (key, value) => safeStorageSet(key, value),
+        removeItem: (key) => safeStorageRemove(key),
+    };
+
+    const readLegacySettings = () => {
+        const legacy = {};
+        const retention = safeStorageGet(LEGACY_SETTINGS_KEYS.historyRetention);
+        if (retention !== null) {
+            legacy.historyRetention = retention;
+        }
+        const cadence = safeStorageGet(LEGACY_SETTINGS_KEYS.announceCadence);
+        if (cadence !== null) {
+            legacy.announceCadence = cadence;
+        }
+        const storedTheme = safeStorageGet(LEGACY_SETTINGS_KEYS.theme);
+        if (storedTheme) {
+            legacy.theme = storedTheme;
+        }
+        return legacy;
+    };
+
+    let appSettings = loadSettingsFromStore(settingsStorageAdapter, {
+        legacyLoader: readLegacySettings,
+        onMigrate: () => {
+            Object.values(LEGACY_SETTINGS_KEYS).forEach((key) => safeStorageRemove(key));
+        },
+    });
+
+    if (!appSettings || typeof appSettings !== 'object') {
+        appSettings = { ...DEFAULT_APP_SETTINGS };
+    }
+
+    saveSettingsToStore(appSettings, settingsStorageAdapter);
+
+    let historyRetention = appSettings.historyRetention;
+    let announcementCadence = appSettings.announceCadence;
+
+    const reduceMotionQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
+
+    const shouldReduceMotion = () => {
+        if (!appSettings || appSettings.reduceMotionRespect === false) {
+            return false;
+        }
+        return reduceMotionQuery ? reduceMotionQuery.matches : false;
+    };
+
+    const syncReduceMotionClass = () => {
+        if (!document.body) {
+            return;
+        }
+        document.body.classList.toggle('reduce-motion-override', appSettings && appSettings.reduceMotionRespect === false);
+    };
+
+
 
     const formatTime = (seconds) => {
         const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
@@ -82,7 +253,217 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         return `${hrs}:${mins}:${secs}`;
     };
 
+    const fmtDate = (timestamp) => {
+        try {
+            const date = new Date(typeof timestamp === 'number' ? timestamp : Number(timestamp));
+            if (Number.isNaN(date.getTime())) {
+                return 'Unknown date';
+            }
+            return date.toLocaleString(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+            });
+        } catch (error) {
+            console.warn('BuzzTimer: unable to format date', timestamp, error);
+            return 'Unknown date';
+        }
+    };
+
+    const fmtDur = (ms) => {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return [
+                String(hours).padStart(2, '0'),
+                String(minutes).padStart(2, '0'),
+                String(seconds).padStart(2, '0'),
+            ].join(':');
+        }
+        return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    };
+
+    const sanitizeHtml = (html) => {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'UL', 'OL', 'LI', 'P', 'A']);
+
+        const cleanNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return;
+            }
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                node.remove();
+                return;
+            }
+            if (!allowedTags.has(node.tagName)) {
+                const parent = node.parentNode;
+                if (parent) {
+                    while (node.firstChild) {
+                        parent.insertBefore(node.firstChild, node);
+                    }
+                    parent.removeChild(node);
+                } else {
+                    node.remove();
+                }
+                return;
+            }
+            Array.from(node.attributes).forEach((attr) => {
+                if (node.tagName === 'A' && attr.name.toLowerCase() === 'href') {
+                    try {
+                        const url = new URL(node.getAttribute(attr.name), window.location.origin);
+                        if (!['http:', 'https:'].includes(url.protocol)) {
+                            node.removeAttribute(attr.name);
+                        } else {
+                            node.setAttribute('target', '_blank');
+                            node.setAttribute('rel', 'noopener noreferrer');
+                        }
+                    } catch (error) {
+                        node.removeAttribute(attr.name);
+                    }
+                } else {
+                    node.removeAttribute(attr.name);
+                }
+            });
+            Array.from(node.childNodes).forEach(cleanNode);
+        };
+
+        Array.from(template.content.childNodes).forEach(cleanNode);
+        return template.innerHTML;
+    };
+
+    const toPlainText = (html) => {
+        if (!html) {
+            return '';
+        }
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        return template.textContent?.trim() || '';
+    };
+
+    let sessionStartTimestamp = null;
+    let sessionEffects = [];
+    let sessionHighIdeas = [];
+    let historyOpener = null;
+    let applyThemeFromHistory = null;
+
     const getElapsedSeconds = () => Math.floor(currentElapsedMs / 1000);
+
+    const listSessions = () => {
+        const stored = safeStorageParse(HISTORY_STORAGE_KEY);
+        if (!Array.isArray(stored)) {
+            return [];
+        }
+        return stored.filter((entry) => entry && typeof entry === 'object');
+    };
+
+    const persistSessions = (sessions) => {
+        try {
+            safeStorageSet(HISTORY_STORAGE_KEY, JSON.stringify(sessions));
+        } catch (error) {
+            console.warn('BuzzTimer: unable to persist sessions', error);
+        }
+    };
+
+    const getRetention = () => historyRetention;
+
+    const saveSession = (session) => {
+        const retention = getRetention();
+        if (retention <= 0) {
+            return;
+        }
+        const existing = listSessions();
+        const next = [session, ...existing].slice(0, retention);
+        persistSessions(next);
+    };
+
+    const removeSessionById = (id) => {
+        const existing = listSessions();
+        const filtered = existing.filter((entry) => entry.id !== id);
+        persistSessions(filtered);
+    };
+
+    const resetSessionCapture = () => {
+        sessionStartTimestamp = null;
+        sessionEffects = [];
+        sessionHighIdeas = [];
+    };
+
+    const describeDurationForAria = (ms = 0) => {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const parts = [];
+        if (hours > 0) {
+            parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
+        }
+        if (minutes > 0) {
+            parts.push(`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`);
+        }
+        if (parts.length === 0) {
+            parts.push(`${seconds} ${seconds === 1 ? 'second' : 'seconds'}`);
+        }
+        return parts.join(' ');
+    };
+
+    const buildHistoryAriaLabel = (session) => {
+        if (!session) {
+            return '';
+        }
+        const parts = [];
+        if (session.startedAt) {
+            parts.push(fmtDate(session.startedAt));
+        }
+        parts.push(describeDurationForAria(session.elapsedMs || 0));
+        if (session.theme) {
+            const friendlyTheme = themeNames[session.theme] || session.theme;
+            parts.push(`${friendlyTheme} theme`);
+        }
+        if (session.productName) {
+            parts.push(`strain ${session.productName}`);
+        }
+        const doseParts = [];
+        if (Number.isFinite(session.doseAmount)) {
+            doseParts.push(String(session.doseAmount));
+        }
+        if (session.doseUnit) {
+            doseParts.push(session.doseUnit);
+        }
+        if (doseParts.length > 0) {
+            parts.push(doseParts.join(' '));
+        }
+        return parts.join(', ');
+    };
+
+    const exportSessionsToFile = (sessions, filename = 'buzz-timer-history.json') => {
+        try {
+            const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to export sessions', error);
+            showAppAlert('Unable to export history right now.');
+        }
+    };
+
+    const exportSingleSession = (session) => {
+        if (!session) {
+            return;
+        }
+        const safeId = typeof session.id === 'string' ? session.id : Date.now();
+        exportSessionsToFile([session], `buzz-timer-session-${safeId}.json`);
+    };
 
     const updateTimerDisplay = () => {
         if (!timerDisplay) {
@@ -123,12 +504,91 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         shareFeedback.classList.remove('is-visible');
     };
 
+    const clampVolume = (value) => clampNumber(Number.isFinite(value) ? value : appSettings.beepVolume, 0, 1);
+
+    const ensureAudioContext = () => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) {
+            return null;
+        }
+        if (!beepAudioContext) {
+            try {
+                beepAudioContext = new AudioCtx();
+            } catch (error) {
+                console.warn('BuzzTimer: unable to initialise audio context', error);
+                beepAudioContext = null;
+            }
+        }
+        return beepAudioContext;
+    };
+
+    const playBeep = () => {
+        if (!appSettings || !appSettings.enableBeep) {
+            return;
+        }
+        const ctx = ensureAudioContext();
+        if (!ctx) {
+            return;
+        }
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+        try {
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 660;
+            gainNode.gain.value = clampVolume(appSettings.beepVolume) * 0.3;
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            const now = ctx.currentTime;
+            oscillator.start(now);
+            oscillator.stop(now + 0.18);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to play beep', error);
+        }
+    };
+
+    const triggerHaptics = () => {
+        if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
+            return;
+        }
+        try {
+            navigator.vibrate(60);
+        } catch (error) {
+            console.warn('BuzzTimer: unable to trigger vibration', error);
+        }
+    };
+
+    const notifyCadenceTick = (minutes) => {
+        if (!appSettings || !appSettings.enableBeep) {
+            return;
+        }
+        playBeep();
+        triggerHaptics();
+        console.log(`Cadence notification fired at minute ${minutes}`);
+    };
+
     const updateTimerAnnouncement = (force = false) => {
         if (!timerLive) return;
         const minutes = Math.max(0, Math.floor(currentElapsedMs / 60000));
         if (!force && minutes === lastAnnouncedMinute) {
             return;
         }
+
+        const cadenceStep = ANNOUNCEMENT_STEPS[announcementCadence] ?? 0;
+        const shouldAnnounce = cadenceStep === 0
+            ? minutes === 0
+            : minutes === 0 || minutes % cadenceStep === 0;
+
+        if (!shouldAnnounce) {
+            lastAnnouncedMinute = minutes;
+            return;
+        }
+
         lastAnnouncedMinute = minutes;
         let announcement;
         if (minutes === 0) {
@@ -139,6 +599,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             announcement = `Timer ${minutes} minutes`;
         }
         timerLive.textContent = announcement;
+
+        if (!force && minutes > 0 && cadenceStep > 0) {
+            notifyCadenceTick(minutes);
+        }
     };
 
     const handleTimerTick = (elapsedMs) => {
@@ -242,12 +706,21 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         startBtn.setAttribute('aria-label', label);
     };
 
+    const setTimerRunningVisual = (isRunning) => {
+        if (!timerContainer) {
+            return;
+        }
+        const shouldGlow = Boolean(isRunning && appSettings && appSettings.enablePulseGlow);
+        timerContainer.classList.toggle('timer-container--running', shouldGlow);
+    };
+
     const startTimer = () => {
         if (timer.isRunning()) {
             return;
         }
         timer.start();
         setStartButtonState('pause');
+        setTimerRunningVisual(true);
         persistTimerState();
         console.log('Timer started');
     };
@@ -258,6 +731,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
         timer.pause();
         setStartButtonState('start');
+        setTimerRunningVisual(false);
         persistTimerState({ startWallClock: null });
         console.log('Timer paused');
     };
@@ -283,16 +757,39 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         timerContainer.focus();
 
         sessionBanner.innerHTML = `
-            <p>
-                Session details saved!
-                <button id="expandSessionBtn2">Edit Details</button>
-            </p>`;
+            <div class="save-confirm" role="status" aria-live="polite">
+                <span>Session details saved!</span>
+                <button id="expandSessionBtn2" type="button" data-tippy-content="Edit your session details.">
+                    Edit Details
+                </button>
+            </div>`;
+
         const expandSessionBtn2 = document.getElementById('expandSessionBtn2');
-        expandSessionBtn2.addEventListener('click', expandSessionDetails);
+        if (expandSessionBtn2) {
+            expandSessionBtn2.addEventListener('click', expandSessionDetails);
+        }
+
+        const saveConfirmEl = sessionBanner.querySelector('.save-confirm');
+
+        if (saveConfirmEl && !shouldReduceMotion()) {
+            saveConfirmEl.classList.add('save-confirm--enter');
+            const activateAnimation = () => {
+                saveConfirmEl.classList.add('save-confirm--enter-active');
+            };
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(activateAnimation);
+            } else {
+                activateAnimation();
+            }
+            saveConfirmEl.addEventListener('transitionend', () => {
+                saveConfirmEl.classList.remove('save-confirm--enter');
+                saveConfirmEl.classList.remove('save-confirm--enter-active');
+            }, { once: true });
+        }
 
         showElement(sessionBanner);
 
-        if (!timer.isRunning()) {
+        if (appSettings.autoStart && !timer.isRunning()) {
             startTimer();
         }
     });
@@ -311,17 +808,25 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     });
 
     resetBtn.addEventListener('click', () => {
-        if (!resetConfirmPending) {
-            resetConfirmPending = true;
-            showAppAlert('Press Reset again within 5 seconds to confirm.');
+        if (appSettings.confirmReset) {
+            if (!resetConfirmPending) {
+                resetConfirmPending = true;
+                showAppAlert('Press Reset again within 5 seconds to confirm.');
+                if (resetConfirmTimeout) {
+                    clearTimeout(resetConfirmTimeout);
+                }
+                resetConfirmTimeout = setTimeout(() => {
+                    resetConfirmPending = false;
+                    clearAppAlert();
+                }, 5000);
+                return;
+            }
+        } else {
+            resetConfirmPending = false;
             if (resetConfirmTimeout) {
                 clearTimeout(resetConfirmTimeout);
+                resetConfirmTimeout = null;
             }
-            resetConfirmTimeout = setTimeout(() => {
-                resetConfirmPending = false;
-                clearAppAlert();
-            }, 5000);
-            return;
         }
 
         resetConfirmPending = false;
@@ -333,6 +838,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         lastAnnouncedMinute = -1;
         timer.reset();
         setStartButtonState('start');
+        setTimerRunningVisual(false);
         persistTimerState({ isRunning: false, startWallClock: null, accumulatedMs: 0 });
         console.log('Timer reset');
 
@@ -383,6 +889,39 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
 
     const modalConfig = {
+        settings: {
+            modal: settingsMenu,
+            backdrop: settingsBackdrop,
+            focusFirst: () => {
+                if (themeSelect && typeof themeSelect.focus === 'function') {
+                    themeSelect.focus();
+                    return;
+                }
+                if (settingsMenu) {
+                    const heading = settingsMenu.querySelector('#settingsTitle');
+                    if (heading && typeof heading.focus === 'function') {
+                        heading.focus();
+                    } else if (typeof settingsMenu.focus === 'function') {
+                        settingsMenu.focus();
+                    }
+                }
+            },
+            onOpen: () => {
+                syncSettingsForm();
+                if (settingsBtn) {
+                    settingsBtn.setAttribute('aria-expanded', 'true');
+                }
+                if (settingsLiveRegion) {
+                    settingsLiveRegion.textContent = '';
+                }
+            },
+            onClose: () => {
+                if (settingsBtn) {
+                    settingsBtn.setAttribute('aria-expanded', 'false');
+                }
+            },
+            closeOnBackdrop: true,
+        },
         log: {
             modal: logModal,
             focusFirst: () => saveLogMoment.focus(),
@@ -567,11 +1106,86 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         return selectedSkin;
     };
 
+    const syncSettingsForm = () => {
+        if (!settingsForm) {
+            return;
+        }
+        if (themeSelect) {
+            themeSelect.value = appSettings.theme || DEFAULT_APP_SETTINGS.theme;
+        }
+        if (pulseGlowToggle) {
+            pulseGlowToggle.checked = Boolean(appSettings.enablePulseGlow);
+        }
+        if (enableBeepToggle) {
+            enableBeepToggle.checked = Boolean(appSettings.enableBeep);
+        }
+        if (beepVolumeInput) {
+            beepVolumeInput.value = String(clampVolume(appSettings.beepVolume));
+        }
+        updateBeepVolumeLabel();
+        if (autoStartToggle) {
+            autoStartToggle.checked = Boolean(appSettings.autoStart);
+        }
+        if (confirmResetToggle) {
+            confirmResetToggle.checked = Boolean(appSettings.confirmReset);
+        }
+        if (reduceMotionToggle) {
+            reduceMotionToggle.checked = Boolean(appSettings.reduceMotionRespect);
+        }
+        if (historySizeInput) {
+            historySizeInput.value = String(appSettings.historyRetention);
+        }
+        if (announceCadenceSelect) {
+            announceCadenceSelect.value = appSettings.announceCadence;
+        }
+    };
+
+    const applySettings = (settings, options = {}) => {
+        historyRetention = settings.historyRetention;
+        announcementCadence = settings.announceCadence;
+        syncReduceMotionClass();
+
+        if (!options.skipTheme) {
+            const desiredTheme = settings.theme || DEFAULT_APP_SETTINGS.theme;
+            const matching = skinOptions.find(btn => btn.getAttribute('data-skin') === desiredTheme);
+            if (matching) {
+                selectSkinOption(matching);
+            } else if (skinOptions.length > 0) {
+                selectSkinOption(skinOptions[0]);
+            }
+        }
+
+        if (!options.skipFormSync) {
+            syncSettingsForm();
+        } else {
+            updateBeepVolumeLabel();
+        }
+
+        setTimerRunningVisual(timer.isRunning());
+        updateTimerAnnouncement(true);
+    };
+
+    const commitSettings = (patch = {}, options = {}) => {
+        const merged = { ...appSettings, ...patch };
+        const nextSettings = migrateSettings(merged);
+        const hasChanges = JSON.stringify(nextSettings) !== JSON.stringify(appSettings);
+        appSettings = nextSettings;
+        saveSettingsToStore(appSettings, settingsStorageAdapter);
+        applySettings(appSettings, {
+            skipFormSync: options.skipFormSync || false,
+            skipTheme: options.skipTheme || false,
+        });
+        if (!options.silent && settingsLiveRegion && hasChanges) {
+            settingsLiveRegion.textContent = options.message || 'Settings updated.';
+        }
+    };
+
     skinOptions.forEach((option, index) => {
         option.addEventListener('click', (event) => {
             event.stopPropagation();
             focusSkinOption(index);
-            selectSkinOption(option);
+            const selectedSkin = selectSkinOption(option);
+            commitSettings({ theme: selectedSkin }, { silent: true, skipTheme: true });
             hideElement(skinSelector);
             skinSelector.setAttribute('aria-hidden', 'true');
             themeToggle.setAttribute('aria-expanded', 'false');
@@ -584,24 +1198,29 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
                 const nextIndex = (currentIndex + 1) % skinOptions.length;
                 focusSkinOption(nextIndex);
-                selectSkinOption(skinOptions[nextIndex]);
+                const selected = selectSkinOption(skinOptions[nextIndex]);
+                commitSettings({ theme: selected }, { silent: true, skipTheme: true });
                 handled = true;
             } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
                 const prevIndex = (currentIndex - 1 + skinOptions.length) % skinOptions.length;
                 focusSkinOption(prevIndex);
-                selectSkinOption(skinOptions[prevIndex]);
+                const selected = selectSkinOption(skinOptions[prevIndex]);
+                commitSettings({ theme: selected }, { silent: true, skipTheme: true });
                 handled = true;
             } else if (event.key === 'Home') {
                 focusSkinOption(0);
-                selectSkinOption(skinOptions[0]);
+                const selected = selectSkinOption(skinOptions[0]);
+                commitSettings({ theme: selected }, { silent: true, skipTheme: true });
                 handled = true;
             } else if (event.key === 'End') {
                 const lastIndex = skinOptions.length - 1;
                 focusSkinOption(lastIndex);
-                selectSkinOption(skinOptions[lastIndex]);
+                const selected = selectSkinOption(skinOptions[lastIndex]);
+                commitSettings({ theme: selected }, { silent: true, skipTheme: true });
                 handled = true;
             } else if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
-                selectSkinOption(option);
+                const selected = selectSkinOption(option);
+                commitSettings({ theme: selected }, { silent: true, skipTheme: true });
                 hideElement(skinSelector);
                 skinSelector.setAttribute('aria-hidden', 'true');
                 themeToggle.setAttribute('aria-expanded', 'false');
@@ -615,12 +1234,85 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         });
     });
 
+    applySettings(appSettings);
+
     const initialActiveOption = skinOptions.find(btn => btn.classList.contains('active'));
     if (initialActiveOption) {
         const optionId = initialActiveOption.id || `skin-option-${initialActiveOption.getAttribute('data-skin')}`;
         initialActiveOption.id = optionId;
         if (skinOptionsGroup) {
             skinOptionsGroup.setAttribute('aria-activedescendant', optionId);
+        }
+    }
+
+    if (beepVolumeInput) {
+        beepVolumeInput.addEventListener('input', updateBeepVolumeLabel);
+    }
+
+    const dismissSettingsModal = (message) => {
+        syncSettingsForm();
+        closeModal('settings');
+        if (settingsLiveRegion && message) {
+            settingsLiveRegion.textContent = message;
+        }
+    };
+
+    if (settingsCancelBtn) {
+        settingsCancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            dismissSettingsModal('Settings closed. No changes saved.');
+        });
+    }
+
+    if (closeSettingsModalBtn) {
+        closeSettingsModalBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            dismissSettingsModal('Settings closed.');
+        });
+    }
+
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const nextSettings = {
+                theme: themeSelect ? themeSelect.value : appSettings.theme,
+                enablePulseGlow: pulseGlowToggle ? pulseGlowToggle.checked : appSettings.enablePulseGlow,
+                enableBeep: enableBeepToggle ? enableBeepToggle.checked : appSettings.enableBeep,
+                beepVolume: beepVolumeInput ? parseFloat(beepVolumeInput.value) : appSettings.beepVolume,
+                autoStart: autoStartToggle ? autoStartToggle.checked : appSettings.autoStart,
+                confirmReset: confirmResetToggle ? confirmResetToggle.checked : appSettings.confirmReset,
+                reduceMotionRespect: reduceMotionToggle ? reduceMotionToggle.checked : appSettings.reduceMotionRespect,
+                historyRetention: historySizeInput ? parseInt(historySizeInput.value, 10) : appSettings.historyRetention,
+                announceCadence: announceCadenceSelect ? announceCadenceSelect.value : appSettings.announceCadence,
+            };
+
+            if (!Number.isFinite(nextSettings.beepVolume)) {
+                nextSettings.beepVolume = appSettings.beepVolume;
+            }
+            if (!Number.isFinite(nextSettings.historyRetention)) {
+                nextSettings.historyRetention = appSettings.historyRetention;
+            }
+
+            commitSettings(nextSettings, { message: 'Settings saved.' });
+            closeModal('settings');
+        });
+    }
+
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            openModal('settings', settingsBtn);
+        });
+    }
+
+    if (reduceMotionQuery) {
+        const handleReduceMotionChange = () => {
+            syncReduceMotionClass();
+            setTimerRunningVisual(timer.isRunning());
+        };
+        if (typeof reduceMotionQuery.addEventListener === 'function') {
+            reduceMotionQuery.addEventListener('change', handleReduceMotionChange);
+        } else if (typeof reduceMotionQuery.addListener === 'function') {
+            reduceMotionQuery.addListener(handleReduceMotionChange);
         }
     }
 
@@ -638,16 +1330,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         handleTimerTick(timer.getElapsedMs());
     }
     setStartButtonState(timer.isRunning() ? 'pause' : 'start');
+    setTimerRunningVisual(timer.isRunning());
     console.log('Timer and theme logic restored.');
-
-    // ========== SETTINGS BUTTON EVENT ==========
-    // This ensures no error is thrown if `settingsBtn` is present in the HTML.
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => {
-            // For now, do nothing or log a placeholder
-            console.log('Settings button clicked. No action configured yet.');
-        });
-    }
 
     logBtn.addEventListener('click', () => {
         clearAppAlert();
