@@ -1,0 +1,8 @@
+from pathlib import Path
+
+path = Path("script.js")
+text = path.read_text(encoding="utf-8")
+
+text = text.replace("themeToggle.addEventListener('click', () => {\n        const isHidden = skinSelector.classList.contains('hidden');\n        if (isHidden) {\n            showElement(skinSelector);\n            skinSelector.classList.remove('hidden');\n            skinSelector.setAttribute('aria-hidden', 'false');\n            const activeIndex = skinOptions.findIndex(btn => btn.classList.contains('active')) || 0;\n            focusSkinOption(activeIndex);\n        } else {\n            hideElement(skinSelector);\n            skinSelector.classList.add('hidden');\n            skinSelector.setAttribute('aria-hidden', 'true');\n            timerContainer.focus();\n        }\n        themeToggle.setAttribute('aria-expanded', (!isHidden).toString());\n        console.log('Theme selector toggled');\n    });", "themeToggle.addEventListener('click', () => {\n        const isHidden = skinSelector.classList.contains('hidden');\n        if (isHidden) {\n            showElement(skinSelector);\n            skinSelector.classList.remove('hidden');\n            skinSelector.setAttribute('aria-hidden', 'false');\n            const activeIndex = skinOptions.findIndex(btn => btn.classList.contains('active'));\n            focusSkinOption(activeIndex >= 0 ? activeIndex : 0);\n        } else {\n            hideElement(skinSelector);\n            skinSelector.classList.add('hidden');\n            skinSelector.setAttribute('aria-hidden', 'true');\n            timerContainer.focus();\n        }\n        themeToggle.setAttribute('aria-expanded', (!isHidden).toString());\n        console.log('Theme selector toggled');\n    });")
+
+path.write_text(text, encoding='utf-8')
