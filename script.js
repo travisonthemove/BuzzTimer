@@ -1,5 +1,100 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
-    console.log("Script successfully loaded and executed");
+document.addEventListener('DOMContentLoaded', () => {
+    const normalizeString = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+    const coerceExplicitFlag = (value) => {
+        if (value === null || value === undefined) {
+            return null;
+        }
+        if (typeof value === 'boolean') {
+            return value;
+        }
+        if (typeof value === 'number') {
+            return value !== 0;
+        }
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            if (!normalized) {
+                return null;
+            }
+            if (['1', 'true', 'yes', 'on', 'dev', 'debug'].includes(normalized)) {
+                return true;
+            }
+            if (['0', 'false', 'no', 'off', 'prod', 'production'].includes(normalized)) {
+                return false;
+            }
+        }
+        return null;
+    };
+    const readQueryFlag = () => {
+        if (typeof window === 'undefined' || !window.location || typeof window.location.search !== 'string') {
+            return null;
+        }
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('btDev') ?? params.get('bt-dev') ?? params.get('debug') ?? params.get('dev');
+            return coerceExplicitFlag(raw);
+        } catch (error) {
+            return null;
+        }
+    };
+    const readStorageFlag = () => {
+        if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+            return null;
+        }
+        try {
+            return coerceExplicitFlag(window.localStorage.getItem('bt:dev'));
+        } catch (storageError) {
+            return null;
+        }
+    };
+    const datasetEnv = normalizeString(document?.documentElement?.dataset?.env);
+    const metaEnvContent = normalizeString(document?.querySelector('meta[name="buzz:env"]')?.getAttribute('content'));
+    const windowEnv = normalizeString(typeof window !== 'undefined' && typeof window.__BUZZTIMER_ENV__ === 'string' ? window.__BUZZTIMER_ENV__ : '');
+    const nodeEnv = normalizeString((typeof process !== 'undefined' && process && process.env && typeof process.env.NODE_ENV === 'string')
+        ? process.env.NODE_ENV
+        : '');
+    const explicitWindowFlag = coerceExplicitFlag(typeof window !== 'undefined' ? window.__BUZZTIMER_DEV__ : undefined);
+    const queryFlag = readQueryFlag();
+    const storageFlag = readStorageFlag();
+
+    // Determine dev mode using explicit overrides before falling back to host heuristics.
+    let __DEV__ = false;
+
+    if (explicitWindowFlag !== null) {
+        __DEV__ = explicitWindowFlag;
+    } else if (queryFlag !== null) {
+        __DEV__ = queryFlag;
+    } else if (storageFlag !== null) {
+        __DEV__ = storageFlag;
+    } else if (datasetEnv) {
+        __DEV__ = datasetEnv !== 'production';
+    } else if (windowEnv) {
+        __DEV__ = windowEnv !== 'production';
+    } else if (metaEnvContent) {
+        __DEV__ = metaEnvContent !== 'production';
+    } else if (nodeEnv) {
+        __DEV__ = nodeEnv !== 'production';
+    } else {
+        const hostname = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+        const protocol = (typeof window !== 'undefined' && window.location && window.location.protocol) ? window.location.protocol : '';
+        const isLocalHost = /^(localhost|127\.0\.0\.1|::1)$/i.test(hostname);
+        const isLocalSuffix = /\.local$/i.test(hostname);
+        __DEV__ = protocol === 'file:' || isLocalHost || isLocalSuffix;
+    }
+    const log = (...args) => {
+        if (__DEV__) {
+            console.log(...args);
+        }
+    };
+    const warn = (...args) => {
+        if (__DEV__) {
+            console.warn(...args);
+        }
+    };
+    const error = (...args) => {
+        console.error(...args);
+    };
+
+    log('Script successfully loaded and executed');
 
     // DOM Elements
     const sessionBanner = document.getElementById('sessionBanner');
@@ -17,13 +112,20 @@
     const themeToggle = document.getElementById('themeToggle');
     const logBtn = document.getElementById('logBtn');
     const logModal = document.getElementById('logModal');
-    const momentInput = document.getElementById('momentInput');
-    const saveLogMoment = document.getElementById('saveLogMoment');
-    const logList = document.getElementById('logList');
+    const logBackdrop = document.getElementById('logBackdrop');
+    const momentForm = document.getElementById('moment-form');
+    const momentEffectInput = document.getElementById('moment-effect');
+    const momentCancelBtn = document.getElementById('moment-cancel');
+    const logList = document.querySelector('.log-list');
+    const logsSection = document.querySelector('.logs');
+    const logLiveRegion = document.getElementById('log-live');
     const highIdeaBtn = document.getElementById('highIdeaBtn');
+    const highIdeaBackdrop = document.getElementById('highIdeaBackdrop');
     const highIdeaModal = document.getElementById('highIdeaModal');
-    const richTextEditor = document.getElementById('richTextEditor');
-    const saveHighIdea = document.getElementById('saveHighIdea');
+    const ideaForm = document.getElementById('idea-form');
+    const ideaTextarea = document.getElementById('idea-text');
+    const ideaCancelBtn = document.getElementById('idea-cancel');
+    const ideaFormattingButtons = Array.from(document.querySelectorAll('.formatting-btn'));
     const entertainmentModal = document.getElementById('entertainmentModal');
     const dismissEntertainment = document.getElementById('dismissEntertainment');
     const distractMeBtn = document.getElementById('distractMeBtn');
@@ -43,7 +145,7 @@
     const timerDisplay = document.getElementById('timer');
     const darkModeToggle = document.getElementById('darkModeToggle');
     // Settings & history controls
-    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsBtn = document.getElementById('settings-btn') || document.getElementById('settingsBtn');
     const settingsMenu = document.getElementById('settingsMenu');
     const settingsBackdrop = document.getElementById('settingsBackdrop');
     const settingsForm = document.getElementById('settingsForm');
@@ -63,6 +165,7 @@
     const openHistoryButton = document.getElementById('openHistory');
     const accountBtn = document.getElementById('accountBtn');
     const settingsLiveRegion = document.getElementById('settingsStatus');
+    const globalLiveRegion = document.getElementById('live');
     const updateBeepVolumeLabel = () => {
         if (!beepVolumeInput || !beepVolumeValue) {
             return;
@@ -72,7 +175,7 @@
         beepVolumeValue.textContent = `${percent}%`;
     };
     const appAlerts = document.getElementById('appAlerts');
-    const timerLive = document.getElementById('timerLive');
+    const timerLive = document.getElementById('timer-status');
     const historyModal = document.getElementById('historyModal');
     const historyBackdrop = document.getElementById('historyBackdrop');
     const historyList = document.getElementById('historyList');
@@ -80,7 +183,84 @@
     const closeHistoryBtn = document.getElementById('closeHistory');
     const exportHistoryBtn = document.getElementById('exportHistory');
     const historyHelp = document.getElementById('historyHelp');
+    const appRoot = document.getElementById('app') || document.body;
+    const appContent = document.querySelector('.app-content') || document.querySelector('main');
     const openModals = new Map();
+    let modalRoot = null;
+
+    const ensureModalRoot = () => {
+        if (modalRoot && document.body.contains(modalRoot)) {
+            return modalRoot;
+        }
+        modalRoot = document.getElementById('modal-root');
+        if (!modalRoot) {
+            modalRoot = document.createElement('div');
+            modalRoot.id = 'modal-root';
+            document.body.appendChild(modalRoot);
+        }
+        return modalRoot;
+    };
+
+    const mountModalElements = (modalNode, backdropNode) => {
+        const root = ensureModalRoot();
+        if (!root) {
+            return false;
+        }
+
+        const safeAppend = (target, node) => {
+            if (!node) {
+                return true;
+            }
+            if (node.parentElement === target) {
+                return true;
+            }
+            try {
+                target.appendChild(node);
+                return true;
+            } catch (appendError) {
+                warn('BuzzTimer: unable to mount modal node', appendError);
+                return false;
+            }
+        };
+
+        if (backdropNode && !safeAppend(root, backdropNode)) {
+            return false;
+        }
+
+        if (modalNode) {
+            const parent = modalNode.parentElement;
+            if (!parent || (parent !== root && parent !== backdropNode)) {
+                if (!safeAppend(root, modalNode)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    };
+
+    ensureModalRoot();
+
+    if (!__DEV__) {
+        if (appRoot && appRoot.classList) {
+            appRoot.classList.remove('debug', 'debug-grid', 'timer-outline');
+        }
+        if (timerContainer) {
+            timerContainer.classList.remove('timer-outline', 'debug', 'debug-grid');
+            const debugMarkers = timerContainer.querySelectorAll('[data-debug-overlay], .timer-outline-corner, .debug-corner');
+            debugMarkers.forEach((node) => {
+                if (typeof node.remove === 'function') {
+                    node.remove();
+                } else if (node.parentNode) {
+                    node.parentNode.removeChild(node);
+                }
+            });
+        }
+    }
+
+    if (settingsBtn && !settingsBtn.dataset.state) {
+        settingsBtn.dataset.state = 'closed';
+    }
 
 // A mapping from the data-skin values to a display-friendly name
     let currentSkin = 'classic';
@@ -104,11 +284,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     // Timer Variables
     let sessionDetailsSaved = false;
-    let lastAnnouncedMinute = -1;
     let resetConfirmPending = false;
     let resetConfirmTimeout;
     let currentElapsedMs = 0;
     let beepAudioContext = null;
+    let lastCadenceMinute = -1;
 
     const LEGACY_SETTINGS_KEYS = Object.freeze({
         historyRetention: 'bt:retention',
@@ -147,7 +327,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             return window.localStorage.getItem(key);
         } catch (error) {
-            console.warn('BuzzTimer: unable to read storage key', key, error);
+            warn('BuzzTimer: unable to read storage key', key, error);
             return null;
         }
     };
@@ -159,7 +339,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             window.localStorage.setItem(key, value);
         } catch (error) {
-            console.warn('BuzzTimer: unable to persist storage key', key, error);
+            warn('BuzzTimer: unable to persist storage key', key, error);
         }
     };
 
@@ -170,7 +350,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             window.localStorage.removeItem(key);
         } catch (error) {
-            console.warn('BuzzTimer: unable to remove storage key', key, error);
+            warn('BuzzTimer: unable to remove storage key', key, error);
         }
     };
 
@@ -182,7 +362,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             return JSON.parse(raw);
         } catch (error) {
-            console.warn('BuzzTimer: unable to parse storage key', key, error);
+            warn('BuzzTimer: unable to parse storage key', key, error);
             return null;
         }
     };
@@ -264,7 +444,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 timeStyle: 'short',
             });
         } catch (error) {
-            console.warn('BuzzTimer: unable to format date', timestamp, error);
+            warn('BuzzTimer: unable to format date', timestamp, error);
             return 'Unknown date';
         }
     };
@@ -365,7 +545,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             safeStorageSet(HISTORY_STORAGE_KEY, JSON.stringify(sessions));
         } catch (error) {
-            console.warn('BuzzTimer: unable to persist sessions', error);
+            warn('BuzzTimer: unable to persist sessions', error);
         }
     };
 
@@ -452,7 +632,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(url), 0);
         } catch (error) {
-            console.warn('BuzzTimer: unable to export sessions', error);
+            warn('BuzzTimer: unable to export sessions', error);
             showAppAlert('Unable to export history right now.');
         }
     };
@@ -472,12 +652,82 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         timerDisplay.textContent = formatTime(getElapsedSeconds());
     };
 
+    const announceTimerStatus = (message) => {
+        if (!timerLive) {
+            return;
+        }
+        const updater = () => {
+            timerLive.textContent = message;
+        };
+        timerLive.textContent = '';
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(updater);
+        } else {
+            setTimeout(updater, 0);
+        }
+    };
+
+    const getFormattedElapsedTime = () => {
+        const elapsedMs = Math.max(0, timer.getElapsedMs());
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        return formatTime(elapsedSeconds);
+    };
+
     const hideElement = (element) => {
         element.classList.add('hidden');
     };
 
     const showElement = (element) => {
         element.classList.remove('hidden');
+    };
+
+    const announce = (message, { target } = {}) => {
+        const region = target || globalLiveRegion || settingsLiveRegion;
+        if (!region) {
+            return;
+        }
+        region.textContent = '';
+        if (!message) {
+            return;
+        }
+        const update = () => {
+            region.textContent = message;
+        };
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(update);
+        } else {
+            setTimeout(update, 0);
+        }
+    };
+
+    const syncAppModalState = () => {
+        if (!appRoot) {
+            return;
+        }
+
+        const settingsToggle = document.getElementById('settings-btn') || settingsBtn;
+
+        if (openModals.size > 0) {
+            document.body.style.overflow = 'hidden';
+            appRoot.classList.add('modal-open');
+            if (appContent) {
+                appContent.setAttribute('aria-hidden', 'true');
+                appContent.setAttribute('inert', '');
+            }
+        } else {
+            document.body.style.overflow = '';
+            appRoot.classList.remove('modal-open');
+            if (appContent) {
+                appContent.removeAttribute('aria-hidden');
+                appContent.removeAttribute('inert');
+            }
+            if (settingsToggle) {
+                settingsToggle.setAttribute('aria-expanded', 'false');
+                if (settingsToggle.dataset) {
+                    settingsToggle.dataset.state = 'closed';
+                }
+            }
+        }
     };
 
     const showAppAlert = (message) => {
@@ -504,6 +754,97 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         shareFeedback.classList.remove('is-visible');
     };
 
+    const ensureLogsVisible = () => {
+        if (logsSection) {
+            showElement(logsSection);
+        }
+    };
+
+    const hideLogsIfEmpty = () => {
+        if (logsSection && logList && logList.children.length === 0) {
+            hideElement(logsSection);
+        }
+    };
+
+    const toISODuration = (totalSeconds) => {
+        const seconds = Math.max(0, Math.floor(totalSeconds));
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        let iso = 'PT';
+        if (hours) iso += `${hours}H`;
+        if (minutes) iso += `${minutes}M`;
+        if (secs || (!hours && !minutes)) iso += `${secs}S`;
+        return iso;
+    };
+
+    const onEditLog = (listItem) => {
+        warn('BuzzTimer: edit log action not yet implemented.', listItem);
+    };
+
+    const onDeleteLog = (listItem) => {
+        if (!listItem) return;
+        const list = listItem.parentElement;
+        listItem.remove();
+        if (list === logList) {
+            hideLogsIfEmpty();
+        }
+        const timeNode = listItem.querySelector('.log-time');
+        const badgeNode = listItem.querySelector('.log-badge');
+        if (logLiveRegion && timeNode && badgeNode) {
+            logLiveRegion.textContent = `Removed ${badgeNode.textContent.toLowerCase()} at ${timeNode.textContent}.`;
+        }
+    };
+
+    const renderLogItem = ({ type, timeText, timeISO, text }) => {
+        const li = document.createElement('li');
+        li.dataset.type = type;
+
+        const timeEl = document.createElement('time');
+        timeEl.className = 'log-time';
+        timeEl.dateTime = timeISO;
+        timeEl.textContent = timeText;
+
+        const badge = document.createElement('span');
+        badge.className = 'log-badge';
+        badge.dataset.type = type;
+        badge.textContent = type === 'idea' ? 'Idea' : 'Moment';
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'log-text';
+        textSpan.textContent = text;
+
+        const actions = document.createElement('span');
+        actions.className = 'log-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.textContent = 'Edit';
+        editBtn.setAttribute('aria-label', `Edit ${type} at ${timeText}`);
+        editBtn.addEventListener('click', () => onEditLog(li));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.setAttribute('aria-label', `Delete ${type} at ${timeText}`);
+        deleteBtn.addEventListener('click', () => onDeleteLog(li));
+
+        actions.append(editBtn, deleteBtn);
+        li.append(timeEl, badge, textSpan, actions);
+        return li;
+    };
+
+    const addLogEntry = (entry) => {
+        if (!logList) return;
+        const item = renderLogItem(entry);
+        logList.insertBefore(item, logList.firstChild);
+        ensureLogsVisible();
+        if (logLiveRegion) {
+            const label = entry.type === 'idea' ? 'idea' : 'moment';
+            logLiveRegion.textContent = `Added ${label} at ${entry.timeText}: ${entry.text}`;
+        }
+    };
+
     const clampVolume = (value) => clampNumber(Number.isFinite(value) ? value : appSettings.beepVolume, 0, 1);
 
     const ensureAudioContext = () => {
@@ -518,7 +859,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             try {
                 beepAudioContext = new AudioCtx();
             } catch (error) {
-                console.warn('BuzzTimer: unable to initialise audio context', error);
+                warn('BuzzTimer: unable to initialise audio context', error);
                 beepAudioContext = null;
             }
         }
@@ -548,7 +889,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             oscillator.start(now);
             oscillator.stop(now + 0.18);
         } catch (error) {
-            console.warn('BuzzTimer: unable to play beep', error);
+            warn('BuzzTimer: unable to play beep', error);
         }
     };
 
@@ -559,7 +900,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             navigator.vibrate(60);
         } catch (error) {
-            console.warn('BuzzTimer: unable to trigger vibration', error);
+            warn('BuzzTimer: unable to trigger vibration', error);
         }
     };
 
@@ -569,46 +910,25 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
         playBeep();
         triggerHaptics();
-        console.log(`Cadence notification fired at minute ${minutes}`);
+        log(`Cadence notification fired at minute ${minutes}`);
     };
 
-    const updateTimerAnnouncement = (force = false) => {
-        if (!timerLive) return;
-        const minutes = Math.max(0, Math.floor(currentElapsedMs / 60000));
-        if (!force && minutes === lastAnnouncedMinute) {
-            return;
-        }
-
+    const maybeFireCadenceTick = () => {
         const cadenceStep = ANNOUNCEMENT_STEPS[announcementCadence] ?? 0;
-        const shouldAnnounce = cadenceStep === 0
-            ? minutes === 0
-            : minutes === 0 || minutes % cadenceStep === 0;
-
-        if (!shouldAnnounce) {
-            lastAnnouncedMinute = minutes;
+        const minutes = Math.max(0, Math.floor(currentElapsedMs / 60000));
+        if (minutes === lastCadenceMinute) {
             return;
         }
-
-        lastAnnouncedMinute = minutes;
-        let announcement;
-        if (minutes === 0) {
-            announcement = 'Timer 0 minutes';
-        } else if (minutes === 1) {
-            announcement = 'Timer 1 minute';
-        } else {
-            announcement = `Timer ${minutes} minutes`;
-        }
-        timerLive.textContent = announcement;
-
-        if (!force && minutes > 0 && cadenceStep > 0) {
+        if (cadenceStep > 0 && minutes > 0 && minutes % cadenceStep === 0) {
             notifyCadenceTick(minutes);
         }
+        lastCadenceMinute = minutes;
     };
 
     const handleTimerTick = (elapsedMs) => {
         currentElapsedMs = Math.max(0, elapsedMs);
         updateTimerDisplay();
-        updateTimerAnnouncement();
+        maybeFireCadenceTick();
     };
 
     const TimerCtor = window.TimerEngine || globalThis.TimerEngine;
@@ -636,7 +956,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             const stateToPersist = { ...baseState, ...overrides };
             window.localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(stateToPersist));
         } catch (error) {
-            console.warn('BuzzTimer: unable to persist timer state', error);
+            warn('BuzzTimer: unable to persist timer state', error);
         }
     };
 
@@ -665,7 +985,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                     accumulatedMs += delta;
                 }
             }
-            lastAnnouncedMinute = -1;
+            lastCadenceMinute = -1;
             timer.setState({
                 accumulatedMs,
                 isRunning: wasRunning,
@@ -673,7 +993,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             persistTimerState();
             return true;
         } catch (error) {
-            console.warn('BuzzTimer: unable to restore timer state', error);
+            warn('BuzzTimer: unable to restore timer state', error);
             return false;
         }
     };
@@ -722,7 +1042,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         setStartButtonState('pause');
         setTimerRunningVisual(true);
         persistTimerState();
-        console.log('Timer started');
+        lastCadenceMinute = Math.max(0, Math.floor(timer.getElapsedMs() / 60000));
+        announceTimerStatus(`Timer started (${getFormattedElapsedTime()})`);
+        log('Timer started');
     };
 
     const pauseTimer = () => {
@@ -733,27 +1055,28 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         setStartButtonState('start');
         setTimerRunningVisual(false);
         persistTimerState({ startWallClock: null });
-        console.log('Timer paused');
+        announceTimerStatus(`Timer paused at ${getFormattedElapsedTime()}`);
+        log('Timer paused');
     };
 
     const collapseSessionDetails = () => {
         hideElement(sessionDetails);
         showElement(sessionBanner);
         timerContainer.focus();
-        console.log('Session details collapsed');
+        log('Session details collapsed');
     };
 
     const expandSessionDetails = () => {
         hideElement(sessionBanner);
         showElement(sessionDetails);
         productNameInput.focus();
-        console.log('Session details expanded');
+        log('Session details expanded');
     };
 
     saveSessionDetailsBtn.addEventListener('click', () => {
         hideElement(sessionDetails);
         sessionDetailsSaved = true;
-        console.log('Session details saved');
+        log('Session details saved');
         timerContainer.focus();
 
         sessionBanner.innerHTML = `
@@ -835,12 +1158,13 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             resetConfirmTimeout = null;
         }
 
-        lastAnnouncedMinute = -1;
+        lastCadenceMinute = -1;
         timer.reset();
         setStartButtonState('start');
         setTimerRunningVisual(false);
         persistTimerState({ isRunning: false, startWallClock: null, accumulatedMs: 0 });
-        console.log('Timer reset');
+        announceTimerStatus('Timer reset');
+        log('Timer reset');
 
         sessionDetailsSaved = false;
         productNameInput.value = '';
@@ -856,8 +1180,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         showElement(sessionBanner);
         hideElement(sessionDetails);
 
-        logList.innerHTML = '';
-        console.log("Log list cleared");
+        if (logList) {
+            logList.innerHTML = '';
+        }
+        hideLogsIfEmpty();
+        log("Log list cleared");
 
         closeModal('log');
         closeModal('highIdea');
@@ -884,7 +1211,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             themeToggle.setAttribute('aria-expanded', 'false');
             timerContainer.focus();
         }
-        console.log('Theme selector toggled');
+        log('Theme selector toggled');
     });
 
 
@@ -893,16 +1220,30 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             modal: settingsMenu,
             backdrop: settingsBackdrop,
             focusFirst: () => {
-                if (themeSelect && typeof themeSelect.focus === 'function') {
-                    themeSelect.focus();
-                    return;
-                }
                 if (settingsMenu) {
                     const heading = settingsMenu.querySelector('#settingsTitle');
                     if (heading && typeof heading.focus === 'function') {
-                        heading.focus();
-                    } else if (typeof settingsMenu.focus === 'function') {
-                        settingsMenu.focus();
+                        try {
+                            heading.focus({ preventScroll: true });
+                        } catch (error) {
+                            heading.focus();
+                        }
+                        return;
+                    }
+                    if (typeof settingsMenu.focus === 'function') {
+                        try {
+                            settingsMenu.focus({ preventScroll: true });
+                        } catch (error) {
+                            settingsMenu.focus();
+                        }
+                        return;
+                    }
+                }
+                if (themeSelect && typeof themeSelect.focus === 'function') {
+                    try {
+                        themeSelect.focus({ preventScroll: true });
+                    } catch (error) {
+                        themeSelect.focus();
                     }
                 }
             },
@@ -910,25 +1251,51 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 syncSettingsForm();
                 if (settingsBtn) {
                     settingsBtn.setAttribute('aria-expanded', 'true');
+                    settingsBtn.dataset.state = 'open';
                 }
-                if (settingsLiveRegion) {
-                    settingsLiveRegion.textContent = '';
-                }
+                announce('', { target: settingsLiveRegion });
             },
             onClose: () => {
                 if (settingsBtn) {
                     settingsBtn.setAttribute('aria-expanded', 'false');
+                    settingsBtn.dataset.state = 'closed';
                 }
             },
             closeOnBackdrop: true,
         },
         log: {
             modal: logModal,
-            focusFirst: () => saveLogMoment.focus(),
+            backdrop: logBackdrop,
+            focusFirst: () => {
+                const momentTitle = document.getElementById('moment-title');
+                if (momentTitle && typeof momentTitle.focus === 'function') {
+                    try {
+                        momentTitle.focus({ preventScroll: true });
+                    } catch (error) {
+                        momentTitle.focus();
+                    }
+                } else if (momentEffectInput && typeof momentEffectInput.focus === 'function') {
+                    momentEffectInput.focus();
+                }
+            },
+            closeOnBackdrop: true,
         },
         highIdea: {
             modal: highIdeaModal,
-            focusFirst: () => saveHighIdea.focus(),
+            backdrop: highIdeaBackdrop,
+            focusFirst: () => {
+                const ideaTitle = document.getElementById('idea-title');
+                if (ideaTitle && typeof ideaTitle.focus === 'function') {
+                    try {
+                        ideaTitle.focus({ preventScroll: true });
+                    } catch (error) {
+                        ideaTitle.focus();
+                    }
+                } else if (ideaTextarea && typeof ideaTextarea.focus === 'function') {
+                    ideaTextarea.focus();
+                }
+            },
+            closeOnBackdrop: true,
         },
         entertainment: {
             modal: entertainmentModal,
@@ -941,8 +1308,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 }
             },
             closeOnBackdrop: true,
-            onOpen: () => document.body.classList.add('modal-open'),
-            onClose: () => document.body.classList.remove('modal-open'),
         },
         share: {
             modal: shareModal,
@@ -980,6 +1345,26 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         const config = modalConfig[key];
         if (!config) return;
         const { modal, backdrop, focusFirst, onOpen } = config;
+        if (!modal) {
+            return;
+        }
+
+        const mounted = mountModalElements(modal, backdrop);
+        if (!mounted) {
+            if (backdrop) {
+                hideElement(backdrop);
+                backdrop.classList.add('hidden');
+                backdrop.setAttribute('aria-hidden', 'true');
+            }
+            hideElement(modal);
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            openModals.delete(modal);
+            syncAppModalState();
+            error('BuzzTimer: failed to open modal due to mount failure', key);
+            return;
+        }
+
         if (backdrop) {
             showElement(backdrop);
             backdrop.classList.remove('hidden');
@@ -989,14 +1374,19 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         modal.classList.remove('hidden');
         modal.setAttribute('aria-hidden', 'false');
         openModals.set(modal, opener || document.activeElement);
+        syncAppModalState();
         if (typeof onOpen === 'function') {
             onOpen();
         }
         setTimeout(() => {
             if (typeof focusFirst === 'function') {
                 focusFirst();
-            } else {
-                modal.focus();
+            } else if (modal && typeof modal.focus === 'function') {
+                try {
+                    modal.focus({ preventScroll: true });
+                } catch (focusError) {
+                    modal.focus();
+                }
             }
         }, 0);
     };
@@ -1017,10 +1407,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             onClose();
         }
         const opener = openModals.get(modal);
+        openModals.delete(modal);
+        syncAppModalState();
         if (opener && typeof opener.focus === 'function') {
             opener.focus();
         }
-        openModals.delete(modal);
     };
 
     Object.entries(modalConfig).forEach(([key, config]) => {
@@ -1031,21 +1422,34 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
         const closeBtn = modal.querySelector('.modal-close');
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => closeModal(key));
+            if (key === 'settings') {
+                closeBtn.addEventListener('click', () => closeSettings('Settings closed.'));
+            } else {
+                closeBtn.addEventListener('click', () => closeModal(key));
+            }
         }
 
         modal.addEventListener('keydown', (event) => {
             if (event.key === 'Tab') {
                 trapFocus(modal, event);
             } else if (event.key === 'Escape') {
-                closeModal(key);
+                event.preventDefault();
+                if (key === 'settings') {
+                    closeSettings('Settings closed.');
+                } else {
+                    closeModal(key);
+                }
             }
         });
 
         if (closeOnBackdrop) {
             modal.addEventListener('click', (event) => {
                 if (event.target === modal) {
-                    closeModal(key);
+                    if (key === 'settings') {
+                        closeSettings('Settings closed.');
+                    } else {
+                        closeModal(key);
+                    }
                 }
             });
         }
@@ -1054,7 +1458,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             backdrop.setAttribute('aria-hidden', 'true');
             backdrop.addEventListener('click', (event) => {
                 if (event.target === backdrop) {
-                    closeModal(key);
+                    if (key === 'settings') {
+                        closeSettings('Settings closed.');
+                    } else {
+                        closeModal(key);
+                    }
                 }
             });
         }
@@ -1077,7 +1485,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         option.classList.add('active');
         option.setAttribute('aria-checked', 'true');
         const selectedSkin = option.getAttribute('data-skin');
-        console.log(`Selected skin: ${selectedSkin}`);
+        log(`Selected skin: ${selectedSkin}`);
 
         const themes = ['theme-classic', 'theme-calm', 'theme-retro', 'theme-party'];
         themes.forEach(theme => themeContainer.classList.remove(theme));
@@ -1162,7 +1570,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
 
         setTimerRunningVisual(timer.isRunning());
-        updateTimerAnnouncement(true);
     };
 
     const commitSettings = (patch = {}, options = {}) => {
@@ -1175,8 +1582,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             skipFormSync: options.skipFormSync || false,
             skipTheme: options.skipTheme || false,
         });
-        if (!options.silent && settingsLiveRegion && hasChanges) {
-            settingsLiveRegion.textContent = options.message || 'Settings updated.';
+        if (!options.silent && hasChanges) {
+            announce(options.message || 'Settings updated.');
         }
     };
 
@@ -1245,29 +1652,90 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
     }
 
+    if (themeSelect) {
+        themeSelect.addEventListener('change', () => {
+            const selectedOption = themeSelect.options[themeSelect.selectedIndex];
+            const label = selectedOption ? selectedOption.textContent.trim() : themeSelect.value;
+            announce(`Theme set to ${label || themeSelect.value}.`);
+        });
+    }
+
     if (beepVolumeInput) {
         beepVolumeInput.addEventListener('input', updateBeepVolumeLabel);
     }
 
-    const dismissSettingsModal = (message) => {
-        syncSettingsForm();
-        closeModal('settings');
-        if (settingsLiveRegion && message) {
-            settingsLiveRegion.textContent = message;
+    const openSettings = () => {
+        if (!settingsMenu) {
+            warn('BuzzTimer: attempted to open settings without modal element.');
+            return;
         }
+
+        if (settingsBtn && settingsBtn.dataset.state === 'open') {
+            return;
+        }
+
+        document.body.style.overflow = 'hidden';
+        if (appRoot) {
+            appRoot.classList.add('modal-open');
+        }
+        if (appContent) {
+            appContent.setAttribute('aria-hidden', 'true');
+        }
+        const settingsToggle = document.getElementById('settings-btn') || settingsBtn;
+        if (settingsToggle) {
+            settingsToggle.setAttribute('aria-expanded', 'true');
+        }
+
+        openModal('settings', settingsBtn || settingsToggle);
+
+        setTimeout(() => {
+            const heading = document.getElementById('settingsTitle');
+            if (heading && typeof heading.focus === 'function') {
+                try {
+                    heading.focus({ preventScroll: true });
+                } catch (error) {
+                    heading.focus();
+                }
+            }
+        }, 0);
     };
 
-    if (settingsCancelBtn) {
-        settingsCancelBtn.addEventListener('click', (event) => {
-            event.preventDefault();
-            dismissSettingsModal('Settings closed. No changes saved.');
-        });
-    }
+    const closeSettings = (message) => {
+        syncSettingsForm();
+        closeModal('settings');
+
+        const noOpenModals = openModals.size === 0;
+
+        if (noOpenModals) {
+            document.body.style.overflow = '';
+            if (appRoot) {
+                appRoot.classList.remove('modal-open');
+            }
+            if (appContent) {
+                appContent.removeAttribute('aria-hidden');
+                appContent.removeAttribute('inert');
+            }
+        }
+        const settingsToggle = document.getElementById('settings-btn') || settingsBtn;
+        if (settingsToggle) {
+            settingsToggle.setAttribute('aria-expanded', 'false');
+        }
+        if (message) {
+            announce(message);
+        }
+    };
 
     if (closeSettingsModalBtn) {
         closeSettingsModalBtn.addEventListener('click', (event) => {
             event.preventDefault();
-            dismissSettingsModal('Settings closed.');
+            closeSettings('Settings closed.');
+        });
+    }
+
+    if (settingsCancelBtn) {
+        settingsCancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeSettings('Settings closed. No changes saved.');
         });
     }
 
@@ -1294,13 +1762,13 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             }
 
             commitSettings(nextSettings, { message: 'Settings saved.' });
-            closeModal('settings');
+            closeSettings();
         });
     }
 
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => {
-            openModal('settings', settingsBtn);
+            openSettings();
         });
     }
 
@@ -1331,73 +1799,170 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     }
     setStartButtonState(timer.isRunning() ? 'pause' : 'start');
     setTimerRunningVisual(timer.isRunning());
-    console.log('Timer and theme logic restored.');
+    log('Timer and theme logic restored.');
 
-    logBtn.addEventListener('click', () => {
-        clearAppAlert();
-        openModal('log', logBtn);
-        console.log("Log Moment modal opened");
-    });
+    if (logBtn) {
+        logBtn.addEventListener('click', () => {
+            clearAppAlert();
+            if (momentEffectInput) {
+                momentEffectInput.value = '';
+            }
+            openModal('log', logBtn);
+            log('Log Moment modal opened');
+        });
+    }
 
-    saveLogMoment.addEventListener('click', () => {
-        const momentText = momentInput.value.trim();
-        if (momentText) {
-            const timeString = formatTime(getElapsedSeconds());
+    if (momentForm) {
+        momentForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const momentText = (momentEffectInput ? momentEffectInput.value : '').trim();
+            if (!momentText) {
+                showAppAlert('Enter a moment before saving.');
+                if (momentEffectInput && typeof momentEffectInput.focus === 'function') {
+                    momentEffectInput.focus();
+                }
+                log('Log Moment input is empty');
+                return;
+            }
 
-            const logEntry = document.createElement('div');
-            logEntry.classList.add('log-entry');
-            const momentContent = `
-                <span class="log-time">${timeString}</span>
-                <span class="log-label">${momentText}</span>
-            `;
-            logEntry.innerHTML = momentContent;
+            const elapsedSeconds = getElapsedSeconds();
+            const timeString = formatTime(elapsedSeconds);
+            addLogEntry({
+                type: 'moment',
+                timeText: timeString,
+                timeISO: toISODuration(elapsedSeconds),
+                text: momentText,
+            });
 
-            logList.appendChild(logEntry);
-            const logsSection = document.querySelector('.logs');
-            showElement(logsSection);
-
-            momentInput.value = '';
+            if (momentEffectInput) {
+                momentEffectInput.value = '';
+            }
             closeModal('log');
             showAppAlert(`Moment logged at ${timeString}.`);
-            console.log(`Log Moment saved: "${momentText}" at ${timeString}`);
-        } else {
-            showAppAlert('Enter a moment before saving.');
-            console.log("Log Moment input is empty");
+            log(`Log Moment saved: "${momentText}" at ${timeString}`);
+        });
+    }
+
+    if (momentCancelBtn) {
+        momentCancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (momentEffectInput) {
+                momentEffectInput.value = '';
+            }
+            closeModal('log');
+            log('Log Moment modal cancelled.');
+        });
+    }
+
+    if (highIdeaBtn) {
+        highIdeaBtn.addEventListener('click', () => {
+            clearAppAlert();
+            if (ideaTextarea) {
+                ideaTextarea.value = '';
+            }
+            openModal('highIdea', highIdeaBtn);
+            log('High Idea modal opened');
+        });
+    }
+
+    const normalizeIdeaText = (raw) => {
+        if (!raw) return '';
+        return raw
+            .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
+            .replace(/__([\s\S]+?)__/g, '$1')
+            .replace(/_([\s\S]+?)_/g, '$1')
+            .trim();
+    };
+
+    const applyIdeaFormatting = (format) => {
+        if (!ideaTextarea) {
+            return;
         }
-    });
+        const el = ideaTextarea;
+        const { selectionStart, selectionEnd, value } = el;
+        if (selectionStart === undefined || selectionEnd === undefined) {
+            return;
+        }
+        const prefix = value.slice(0, selectionStart);
+        const selected = value.slice(selectionStart, selectionEnd);
+        const suffix = value.slice(selectionEnd);
 
-    highIdeaBtn.addEventListener('click', () => {
-        clearAppAlert();
-        openModal('highIdea', highIdeaBtn);
-        console.log("High Idea modal opened");
-    });
+        const tokens = {
+            bold: ['**', '**'],
+            italic: ['_', '_'],
+            underline: ['__', '__'],
+        };
+        const [openToken, closeToken] = tokens[format] || ['', ''];
+        if (!openToken && !closeToken) {
+            return;
+        }
 
-    saveHighIdea.addEventListener('click', () => {
-        const ideaContent = richTextEditor.innerHTML.trim();
-        if (ideaContent) {
-            const timeString = formatTime(getElapsedSeconds());
+        const content = selected || '';
+        const replacement = `${openToken}${content}${closeToken}`;
+        const nextValue = `${prefix}${replacement}${suffix}`;
 
-            const logEntry = document.createElement('div');
-            logEntry.classList.add('log-entry');
-            const ideaContentHtml = `
-                <span class="log-time">${timeString}</span>
-                <div class="log-label idea-content">${ideaContent}</div>
-            `;
-            logEntry.innerHTML = ideaContentHtml;
+        el.value = nextValue;
+        const caretStart = selectionStart + openToken.length;
+        const caretEnd = caretStart + content.length;
+        requestAnimationFrame(() => {
+            el.focus();
+            el.setSelectionRange(caretStart, caretEnd);
+        });
+    };
 
-            logList.appendChild(logEntry);
-            const logsSection = document.querySelector('.logs');
-            showElement(logsSection);
+    if (Array.isArray(ideaFormattingButtons) && ideaFormattingButtons.length > 0) {
+        ideaFormattingButtons.forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const format = button.dataset.format;
+                applyIdeaFormatting(format);
+            });
+        });
+    }
 
-            richTextEditor.innerHTML = '';
+    if (ideaForm) {
+        ideaForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const ideaContent = ideaTextarea ? ideaTextarea.value.trim() : '';
+            if (!ideaContent) {
+                showAppAlert('Add some notes before saving your idea.');
+                if (ideaTextarea) {
+                    ideaTextarea.focus();
+                }
+                log('High Idea content is empty');
+                return;
+            }
+
+            const elapsedSeconds = getElapsedSeconds();
+            const timeString = formatTime(elapsedSeconds);
+            const displayText = normalizeIdeaText(ideaContent) || ideaContent;
+            addLogEntry({
+                type: 'idea',
+                timeText: timeString,
+                timeISO: toISODuration(elapsedSeconds),
+                text: displayText,
+            });
+
+            if (ideaTextarea) {
+                ideaTextarea.value = '';
+            }
+            announce('Idea saved.');
             closeModal('highIdea');
             showAppAlert(`High idea saved at ${timeString}.`);
-            console.log(`High Idea saved: "${ideaContent}" at ${timeString}`);
-        } else {
-            showAppAlert('Add some notes before saving your idea.');
-            console.log("High Idea content is empty");
-        }
-    });
+            log(`High Idea saved: "${ideaContent}" at ${timeString}`);
+        });
+    }
+
+    if (ideaCancelBtn) {
+        ideaCancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (ideaTextarea) {
+                ideaTextarea.value = '';
+            }
+            closeModal('highIdea');
+            log('High Idea modal cancelled.');
+        });
+    }
 
     distractMeBtn.addEventListener('click', () => {
         openModal('entertainment', distractMeBtn);
@@ -1407,8 +1972,17 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     let shareType = 'simple'; 
 
+    if (logsShareButton) {
+        logsShareButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            clearShareFeedback();
+            openModal('share', logsShareButton);
+            updateSharePreview();
+        });
+    }
+
     shareBtn.addEventListener('click', () => {
-        console.log('Share button clicked!');
+        log('Share button clicked!');
         openModal('share', shareBtn);
         updateSharePreview();
     });
@@ -1440,7 +2014,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 Learn more at BuzzTimer.com
             `.trim();
         } else {
-            const loggedMoments = Array.from(logList.children)
+            const logItems = logList ? Array.from(logList.children) : [];
+            const loggedMoments = logItems
                 .map(entry => entry.textContent.trim())
                 .join('\n');
             const strainInfo = productName.value.trim() || 'No strain specified';
@@ -1493,8 +2068,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     darkModeToggle.addEventListener('click', () => {
         document.body.classList.toggle('light-mode');
         const isLight = updateDarkModeToggle();
-        console.log(`Light mode is now ${isLight ? 'ON' : 'OFF'}`);
+        log(`Light mode is now ${isLight ? 'ON' : 'OFF'}`);
     });
 
     updateDarkModeToggle();
 });
+
+    const logsShareButton = logsSection ? logsSection.querySelector('.share-btn') : null;
