@@ -520,6 +520,16 @@ button .icon {
     color: var(--text-color);
 }
 
+.dose-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.dose-wrapper input {
+    flex: 1;
+}
+
 .session-banner button {
     background: transparent;
     border: none;

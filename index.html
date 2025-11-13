@@ -236,16 +236,43 @@
         <img src="static/icons/session.svg" alt="" style="width: 24px; height: 24px;">
         Session Details
       </h3>
-      <div class="session-form">
+      <div class="session-summary" id="sessionSummary" aria-live="polite">
+        <p id="sessionSummaryEmpty">No session details saved yet.</p>
+        <dl class="session-summary-list hidden" id="sessionSummaryList">
+          <div class="session-summary-row">
+            <dt>Product</dt>
+            <dd id="sessionSummaryProduct">—</dd>
+          </div>
+          <div class="session-summary-row">
+            <dt>Method</dt>
+            <dd id="sessionSummaryMethod">—</dd>
+          </div>
+          <div class="session-summary-row">
+            <dt>Dose</dt>
+            <dd id="sessionSummaryDose">—</dd>
+          </div>
+        </dl>
+      </div>
+      <button id="editSessionDetailsBtn" type="button" class="btn secondary hidden">
+        Edit Details
+      </button>
+    </div>
+
+    <div id="sessionDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sdmTitle">
+      <div class="modal-content">
+        <button class="modal-close modal__close" type="button" aria-label="Close">&times;</button>
+        <h2 id="sdmTitle">Session Details</h2>
+
         <div class="form-group">
-          <label for="productName">Product Name</label>
-          <input type="text" id="productName" placeholder="e.g., Blue Dream">
+          <label for="sdmProductName">Product Name</label>
+          <input id="sdmProductName" type="text" placeholder="e.g., Blue Dream">
         </div>
+
         <div class="form-group">
-          <label for="consumptionMethod">Consumption Method</label>
-          <select id="consumptionMethod">
-            <option value="">Select method...</option>
-            <option value="Flower" selected>Flower</option>
+          <label for="sdmMethod">Consumption Method</label>
+          <select id="sdmMethod">
+            <option value="" selected>Select...</option>
+            <option value="Flower">Flower</option>
             <option value="Vape">Vape</option>
             <option value="Edible">Edible</option>
             <option value="Concentrate">Concentrate</option>
@@ -253,25 +280,32 @@
             <option value="Topical">Topical</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label for="doseAmount">Dose</label>
+          <label for="sdmDose">Dose</label>
           <div class="dose-wrapper">
-            <input type="number" id="doseAmount" min="0" step="0.5" value="3">
-            <select id="doseUnit">
-              <option value="mg">mg</option>
+            <input id="sdmDose" type="number" min="0" step="0.1" inputmode="decimal">
+            <select id="sdmUnit">
+              <option value="mg" selected>mg</option>
               <option value="g">g</option>
               <option value="ml">ml</option>
-              <option value="puffs" selected>puffs</option>
+              <option value="puffs">puffs</option>
             </select>
           </div>
         </div>
-      </div>
-      <button id="saveSessionDetailsBtn" data-tippy-content="Save your session details.">
-        Save
-      </button>
-    </div>
 
-    <div class="session-summary hidden" id="sessionSummary"></div>
+        <div class="modal__actions">
+          <button id="sdmSave" type="button" class="btn primary">Save</button>
+          <button id="sdmCancel" type="button" class="btn secondary">Cancel</button>
+        </div>
+
+        <div class="modal-secondary-actions modal__actions">
+          <button id="sdmAddDose" type="button" class="btn secondary">Add Dose</button>
+          <button id="sdmHistory" type="button" class="btn secondary">Session History</button>
+          <button id="sdmShare" type="button" class="btn secondary">Share</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Log Moment Modal -->
     <div id="logBackdrop" class="modal-backdrop backdrop hidden" aria-hidden="true"></div>
@@ -314,7 +348,7 @@
       <div id="log-live" aria-live="polite" class="sr-only"></div>
       <ol class="log-list" reversed></ol>
       <div class="logs-footer">
-        <button class="share-btn" aria-label="Share session log">Share</button>
+        <button id="logsShareButton" class="share-btn" aria-label="Share session log">Share</button>
       </div>
     </section>
 
