@@ -99,9 +99,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const sessionBanner = document.getElementById('sessionBanner');
     const sessionDetails = document.getElementById('sessionDetails');
-    const expandSessionBtn = document.getElementById('expandSessionBtn');
-    const saveSessionDetailsBtn = document.getElementById('saveSessionDetailsBtn');
-    const productNameInput = document.getElementById('productName'); // Strain input
+    const sessionSummary = document.getElementById('sessionSummary');
+    const sessionSummaryList = document.getElementById('sessionSummaryList');
+    const sessionSummaryProduct = document.getElementById('sessionSummaryProduct');
+    const sessionSummaryMethod = document.getElementById('sessionSummaryMethod');
+    const sessionSummaryDose = document.getElementById('sessionSummaryDose');
+    const sessionDoseSummary = document.getElementById('sessionDoseSummary');
+    const doseMostRecentSummary = document.getElementById('doseMostRecentSummary');
+    const sessionSummaryEmpty = document.getElementById('sessionSummaryEmpty');
+    const doseTimelineContainer = document.getElementById('doseTimelineContainer');
+    const doseTimelineGroups = document.getElementById('doseTimelineGroups');
+    const editSessionDetailsBtn = document.getElementById('editSessionDetailsBtn');
+    const sessionBtn = document.getElementById('sessionBtn');
+    const sessionDetailsModal = document.getElementById('sessionDetailsModal');
+    const sdmProductName = document.getElementById('sdmProductName');
+    const sdmMethod = document.getElementById('sdmMethod');
+    const sdmDose = document.getElementById('sdmDose');
+    const sdmUnit = document.getElementById('sdmUnit');
+    const sdmSaveBtn = document.getElementById('sdmSave');
+    const sdmCancelBtn = document.getElementById('sdmCancel');
+    const sdmAddDoseBtn = document.getElementById('sdmAddDose');
+    const addDoseSection = document.getElementById('addDoseSection');
+    const addDoseProductModeRadios = document.querySelectorAll('input[name="doseProductMode"]');
+    const addDoseNewProductFields = document.getElementById('addDoseNewProductFields');
+    const addDoseProductNameInput = document.getElementById('addDoseProductName');
+    const addDoseMethodSelect = document.getElementById('addDoseMethod');
+    const addDoseAmountInput = document.getElementById('addDoseAmount');
+    const addDoseUnitSelect = document.getElementById('addDoseUnit');
+    const addDoseSaveBtn = document.getElementById('addDoseSaveBtn');
+    const addDoseCancelBtn = document.getElementById('addDoseCancelBtn');
+    const sdmHistoryBtn = document.getElementById('sdmHistory');
+    const sdmShareBtn = document.getElementById('sdmShare');
     const startBtn = document.getElementById('startBtn');
     const resetBtn = document.getElementById('resetBtn');
     const themeContainer = document.querySelector('.theme-container');
@@ -140,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareFacebook = document.getElementById('shareFacebook');
     const copyLink = document.getElementById('copyLink');
     const shareFeedback = document.getElementById('shareFeedback');
-    const productName = document.getElementById('productName');
+    const logsShareButton = document.getElementById('logsShareButton');
     const timerContainer = document.getElementById('timerContainer');
     const timerDisplay = document.getElementById('timer');
     const darkModeToggle = document.getElementById('darkModeToggle');
@@ -284,6 +312,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     // Timer Variables
     let sessionDetailsSaved = false;
+    let sessionDetailsTriggerEl = null;
     let resetConfirmPending = false;
     let resetConfirmTimeout;
     let currentElapsedMs = 0;
@@ -366,6 +395,87 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             return null;
         }
     };
+
+    const ACTIVE_SESSION_STORAGE_KEY = 'bt_session_active';
+    const LAST_SESSION_STORAGE_KEY = 'bt_session_last';
+    const THEME_STORAGE_KEY = 'bt_theme_current';
+
+    const loadJson = (key) => safeStorageParse(key);
+    const saveJson = (key, value) => {
+        if (value === null || value === undefined) {
+            safeStorageRemove(key);
+            return;
+        }
+        try {
+            safeStorageSet(key, JSON.stringify(value));
+        } catch (storageError) {
+            warn('BuzzTimer: unable to persist session key', key, storageError);
+        }
+    };
+
+    const cloneSession = (value) => {
+        if (!value) {
+            return null;
+        }
+        try {
+            return JSON.parse(JSON.stringify(value));
+        } catch (cloneError) {
+            warn('BuzzTimer: unable to clone session object', cloneError);
+            return null;
+        }
+    };
+
+    const ensureSessionDoseArray = (session) => {
+        if (!session) {
+            return session;
+        }
+        if (!Array.isArray(session.doses)) {
+            session.doses = [];
+        }
+        return session;
+    };
+
+    let cachedActiveSession = ensureSessionDoseArray(loadJson(ACTIVE_SESSION_STORAGE_KEY));
+    let cachedLastSession = ensureSessionDoseArray(loadJson(LAST_SESSION_STORAGE_KEY));
+
+    const getActiveSession = () => cachedActiveSession || null;
+    const setActiveSession = (session) => {
+        const nextSession = session ? ensureSessionDoseArray(cloneSession(session)) : null;
+        cachedActiveSession = nextSession;
+        saveJson(ACTIVE_SESSION_STORAGE_KEY, cachedActiveSession);
+    };
+
+    const getLastSession = () => cachedLastSession || null;
+    const setLastSession = (session) => {
+        const nextSession = session ? ensureSessionDoseArray(cloneSession(session)) : null;
+        cachedLastSession = nextSession;
+        saveJson(LAST_SESSION_STORAGE_KEY, cachedLastSession);
+    };
+
+    const addDoseToActiveSession = (doseMeta) => {
+        if (!doseMeta || typeof doseMeta !== 'object') {
+            return null;
+        }
+        const active = getActiveSession();
+        if (!active) {
+            return null;
+        }
+        if (!Array.isArray(active.doses)) {
+            active.doses = [];
+        }
+        active.doses.push(doseMeta);
+        if (doseMeta.ts) {
+            active.updatedAt = doseMeta.ts;
+        }
+        setActiveSession(active);
+        setLastSession(active);
+        return getActiveSession();
+    };
+
+    const getCurrentTheme = () => safeStorageGet(THEME_STORAGE_KEY) || currentSkin || 'classic';
+    const hasSessionBaseline = (session) => Boolean(session && session.productName && session.method);
+
+    sessionDetailsSaved = sessionDetailsSaved || hasSessionBaseline(getActiveSession());
 
     const settingsStorageAdapter = {
         getItem: (key) => safeStorageGet(key),
@@ -1059,67 +1169,697 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         log('Timer paused');
     };
 
-    const collapseSessionDetails = () => {
-        hideElement(sessionDetails);
-        showElement(sessionBanner);
-        timerContainer.focus();
-        log('Session details collapsed');
-    };
-
-    const expandSessionDetails = () => {
-        hideElement(sessionBanner);
-        showElement(sessionDetails);
-        productNameInput.focus();
-        log('Session details expanded');
-    };
-
-    saveSessionDetailsBtn.addEventListener('click', () => {
-        hideElement(sessionDetails);
-        sessionDetailsSaved = true;
-        log('Session details saved');
-        timerContainer.focus();
-
-        sessionBanner.innerHTML = `
-            <div class="save-confirm" role="status" aria-live="polite">
-                <span>Session details saved!</span>
-                <button id="expandSessionBtn2" type="button" data-tippy-content="Edit your session details.">
-                    Edit Details
-                </button>
-            </div>`;
-
-        const expandSessionBtn2 = document.getElementById('expandSessionBtn2');
-        if (expandSessionBtn2) {
-            expandSessionBtn2.addEventListener('click', expandSessionDetails);
+    const formatDoseSummary = (details) => {
+        if (!details) {
+            return 'Not specified';
         }
+        const sourceDose = details.dose && typeof details.dose === 'object' ? details.dose : null;
+        const amount = sourceDose?.amount ?? details.doseAmount;
+        const unit = sourceDose?.unit || details.doseUnit || 'mg';
+        if (amount === null || amount === undefined || amount === '') {
+            return unit;
+        }
+        const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+        const displayAmount = Number.isFinite(numericAmount) ? numericAmount : amount;
+        return `${displayAmount}${unit ? ` ${unit}` : ''}`.trim();
+    };
 
-        const saveConfirmEl = sessionBanner.querySelector('.save-confirm');
+    const getSessionDoses = (details) => (Array.isArray(details?.doses) ? details.doses : []);
 
-        if (saveConfirmEl && !shouldReduceMotion()) {
-            saveConfirmEl.classList.add('save-confirm--enter');
-            const activateAnimation = () => {
-                saveConfirmEl.classList.add('save-confirm--enter-active');
-            };
-            if (typeof requestAnimationFrame === 'function') {
-                requestAnimationFrame(activateAnimation);
-            } else {
-                activateAnimation();
+    const formatDoseMetaAmount = (doseMeta) => {
+        if (!doseMeta || !doseMeta.dose) {
+            return '';
+        }
+        const amount = doseMeta.dose.amount;
+        const unit = doseMeta.dose.unit || '';
+        if (amount === null || amount === undefined || amount === '') {
+            return '';
+        }
+        const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount);
+        const displayAmount = Number.isFinite(numericAmount) ? numericAmount : amount;
+        return `${displayAmount}${unit ? ` ${unit}` : ''}`.trim();
+    };
+
+    const describeDoseMeta = (doseMeta) => {
+        if (!doseMeta) {
+            return '';
+        }
+        const amountPart = formatDoseMetaAmount(doseMeta);
+        const methodPart = doseMeta.method || '';
+        if (amountPart && methodPart) {
+            return `${amountPart} ${methodPart}`.trim();
+        }
+        return amountPart || methodPart || doseMeta.productName || '';
+    };
+
+    const updateDoseSummaryIndicator = (details, hasDetails) => {
+        if (!sessionDoseSummary) {
+            return;
+        }
+        if (!hasDetails) {
+            sessionDoseSummary.textContent = '';
+            sessionDoseSummary.classList.add('hidden');
+            return;
+        }
+        const doses = getSessionDoses(details);
+        let summaryText = '';
+        if (!doses.length) {
+            summaryText = 'Doses: none recorded yet.';
+        } else {
+            const latestDescription = describeDoseMeta(doses[doses.length - 1]);
+            const base = `Doses: ${doses.length}`;
+            summaryText = latestDescription ? `${base} (latest: ${latestDescription}).` : `${base}.`;
+        }
+        sessionDoseSummary.textContent = summaryText;
+        sessionDoseSummary.classList.remove('hidden');
+    };
+
+    const formatDoseAmountWithMethod = (dose) => {
+        const amountPart = formatDoseMetaAmount(dose);
+        const methodPart = dose?.method || '';
+        if (amountPart && methodPart) {
+            return `${amountPart} ${methodPart}`.trim();
+        }
+        return amountPart || methodPart || 'Dose logged';
+    };
+
+    const formatDoseTimelineTime = (doseMeta) => {
+        const elapsedSeconds = typeof doseMeta?.elapsedSeconds === 'number' && Number.isFinite(doseMeta.elapsedSeconds)
+            ? Math.max(0, Math.floor(doseMeta.elapsedSeconds))
+            : null;
+        if (elapsedSeconds === null) {
+            return '—:--';
+        }
+        return formatTime(elapsedSeconds);
+    };
+
+    const getDoseSortValue = (dose) => {
+        if (!dose || typeof dose !== 'object') {
+            return Number.MAX_SAFE_INTEGER;
+        }
+        if (typeof dose.elapsedSeconds === 'number' && Number.isFinite(dose.elapsedSeconds)) {
+            return Math.max(0, dose.elapsedSeconds);
+        }
+        if (dose.ts) {
+            const parsed = Date.parse(dose.ts);
+            if (!Number.isNaN(parsed)) {
+                return Math.floor(parsed / 1000);
             }
-            saveConfirmEl.addEventListener('transitionend', () => {
-                saveConfirmEl.classList.remove('save-confirm--enter');
-                saveConfirmEl.classList.remove('save-confirm--enter-active');
-            }, { once: true });
+        }
+        return Number.MAX_SAFE_INTEGER;
+    };
+
+    const formatDoseProductName = (dose) => (dose?.productName && dose.productName.trim()) ? dose.productName.trim() : 'Unknown product';
+
+    const renderDoseMostRecent = (doses, hasDetails) => {
+        if (!doseMostRecentSummary) {
+            return;
+        }
+        if (!hasDetails || !Array.isArray(doses) || doses.length === 0) {
+            doseMostRecentSummary.textContent = '';
+            doseMostRecentSummary.classList.add('hidden');
+            return;
+        }
+        const sorted = [...doses].sort((a, b) => getDoseSortValue(a) - getDoseSortValue(b));
+        const latestDose = sorted[sorted.length - 1];
+        if (!latestDose) {
+            doseMostRecentSummary.textContent = '';
+            doseMostRecentSummary.classList.add('hidden');
+            return;
+        }
+        const productName = formatDoseProductName(latestDose);
+        const timeText = formatDoseTimelineTime(latestDose);
+        const description = formatDoseAmountWithMethod(latestDose);
+        doseMostRecentSummary.textContent = `Most Recent: ${productName} ${timeText} – ${description}`;
+        doseMostRecentSummary.classList.remove('hidden');
+    };
+
+    const renderDoseGroups = (doses, hasDetails) => {
+        if (!doseTimelineContainer || !doseTimelineGroups) {
+            return;
+        }
+        if (!hasDetails || !Array.isArray(doses) || doses.length === 0) {
+            doseTimelineGroups.innerHTML = '';
+            doseTimelineContainer.classList.add('hidden');
+            return;
+        }
+        const sorted = [...doses].sort((a, b) => getDoseSortValue(a) - getDoseSortValue(b));
+        const latestDose = sorted[sorted.length - 1] || null;
+        const latestProductName = latestDose ? formatDoseProductName(latestDose) : null;
+        const groupMap = new Map();
+        sorted.forEach((dose) => {
+            const productName = formatDoseProductName(dose);
+            if (!groupMap.has(productName)) {
+                groupMap.set(productName, []);
+            }
+            groupMap.get(productName).push(dose);
+        });
+        const groups = Array.from(groupMap.entries()).map(([productName, groupDoses]) => ({
+            productName,
+            doses: groupDoses,
+            firstSortValue: getDoseSortValue(groupDoses[0]),
+        }));
+        groups.sort((a, b) => {
+            if (latestProductName) {
+                if (a.productName === latestProductName && b.productName !== latestProductName) {
+                    return -1;
+                }
+                if (b.productName === latestProductName && a.productName !== latestProductName) {
+                    return 1;
+                }
+            }
+            if (a.firstSortValue === b.firstSortValue) {
+                return a.productName.localeCompare(b.productName);
+            }
+            return a.firstSortValue - b.firstSortValue;
+        });
+        doseTimelineGroups.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        groups.forEach((group) => {
+            const groupWrapper = document.createElement('div');
+            groupWrapper.className = 'dose-group';
+            const title = document.createElement('h5');
+            title.className = 'dose-group__title';
+            title.textContent = `Product: ${group.productName}`;
+            groupWrapper.appendChild(title);
+            const list = document.createElement('ul');
+            list.className = 'dose-group__list';
+            group.doses.forEach((dose) => {
+                const item = document.createElement('li');
+                item.className = 'dose-group__item';
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'dose-group__time';
+                timeSpan.textContent = formatDoseTimelineTime(dose);
+                item.appendChild(timeSpan);
+                const descSpan = document.createElement('span');
+                descSpan.className = 'dose-group__description';
+                descSpan.textContent = formatDoseAmountWithMethod(dose);
+                item.appendChild(descSpan);
+                list.appendChild(item);
+            });
+            groupWrapper.appendChild(list);
+            fragment.appendChild(groupWrapper);
+        });
+        doseTimelineGroups.appendChild(fragment);
+        doseTimelineContainer.classList.remove('hidden');
+    };
+
+    const updateDoseVisuals = (details, hasDetails) => {
+        const doses = getSessionDoses(details);
+        renderDoseMostRecent(doses, hasDetails);
+        renderDoseGroups(doses, hasDetails);
+    };
+
+    const updateSessionSummary = (details) => {
+        if (!sessionDetails || !sessionSummary) {
+            return;
+        }
+        const hasDetails = hasSessionBaseline(details);
+        if (hasDetails) {
+            if (sessionSummaryProduct) {
+                sessionSummaryProduct.textContent = details.productName;
+            }
+            if (sessionSummaryMethod) {
+                sessionSummaryMethod.textContent = details.method;
+            }
+            if (sessionSummaryDose) {
+                sessionSummaryDose.textContent = formatDoseSummary(details);
+            }
+            if (sessionSummaryList) {
+                sessionSummaryList.classList.remove('hidden');
+            }
+            if (sessionSummaryEmpty) {
+                sessionSummaryEmpty.classList.add('hidden');
+            }
+            showElement(sessionDetails);
+            if (editSessionDetailsBtn) {
+                editSessionDetailsBtn.classList.remove('hidden');
+            }
+        } else {
+            if (sessionSummaryList) {
+                sessionSummaryList.classList.add('hidden');
+            }
+            if (sessionSummaryEmpty) {
+                sessionSummaryEmpty.classList.remove('hidden');
+            }
+            hideElement(sessionDetails);
+            if (editSessionDetailsBtn) {
+                editSessionDetailsBtn.classList.add('hidden');
+            }
+        }
+        updateDoseSummaryIndicator(details, hasDetails);
+        updateDoseVisuals(details, hasDetails);
+    };
+
+    const getDefaultDoseUnit = () => {
+        const active = getActiveSession();
+        const sourceDose = active?.dose && typeof active.dose === 'object' ? active.dose : null;
+        return sourceDose?.unit || active?.doseUnit || 'mg';
+    };
+
+    const getDoseProductMode = () => {
+        const radios = Array.from(addDoseProductModeRadios || []);
+        const selected = radios.find((radio) => radio.checked);
+        return selected ? selected.value : 'current';
+    };
+
+    const setDoseProductMode = (mode, { focusNewFields = false } = {}) => {
+        const radios = Array.from(addDoseProductModeRadios || []);
+        radios.forEach((radio) => {
+            radio.checked = radio.value === mode;
+        });
+        if (!addDoseNewProductFields) {
+            return;
+        }
+        if (mode === 'new') {
+            addDoseNewProductFields.classList.remove('hidden');
+            if (focusNewFields) {
+                focusElementSafe(addDoseProductNameInput);
+            }
+        } else {
+            addDoseNewProductFields.classList.add('hidden');
+        }
+    };
+
+    const hideAddDoseSection = () => {
+        if (addDoseSection) {
+            addDoseSection.classList.add('hidden');
+        }
+    };
+
+    const resetAddDoseForm = () => {
+        if (!addDoseSection) {
+            return;
+        }
+        setDoseProductMode('current');
+        if (addDoseProductNameInput) {
+            addDoseProductNameInput.value = '';
+        }
+        if (addDoseMethodSelect) {
+            addDoseMethodSelect.value = '';
+        }
+        if (addDoseAmountInput) {
+            addDoseAmountInput.value = '';
+        }
+        if (addDoseUnitSelect) {
+            addDoseUnitSelect.value = getDefaultDoseUnit();
+        }
+    };
+
+    const showAddDoseSection = () => {
+        if (!addDoseSection) {
+            return;
+        }
+        const active = getActiveSession();
+        if (!sessionDetailsSaved || !hasSessionBaseline(active)) {
+            const message = 'Start a session and save details before adding a dose.';
+            showAppAlert(message);
+            announce(message);
+            return;
+        }
+        resetAddDoseForm();
+        addDoseSection.classList.remove('hidden');
+        focusElementSafe(addDoseAmountInput || addDoseProductNameInput || addDoseSaveBtn);
+    };
+
+    const handleAddDoseSave = () => {
+        if (!addDoseSection) {
+            return;
+        }
+        const active = getActiveSession();
+        if (!sessionDetailsSaved || !hasSessionBaseline(active)) {
+            const message = 'Start a session and save details before adding a dose.';
+            showAppAlert(message);
+            announce(message);
+            return;
+        }
+        const mode = getDoseProductMode();
+        const rawAmount = addDoseAmountInput ? addDoseAmountInput.value.trim() : '';
+        const hasAmount = rawAmount.length > 0;
+        const parsedAmount = hasAmount ? Number(rawAmount) : null;
+        if (hasAmount && (!Number.isFinite(parsedAmount) || parsedAmount < 0)) {
+            announceSessionValidation('Dose must be zero or higher.', addDoseAmountInput);
+            return;
+        }
+        let productName = active.productName || '';
+        let method = active.method || '';
+        if (mode === 'new') {
+            productName = addDoseProductNameInput ? addDoseProductNameInput.value.trim() : '';
+            method = addDoseMethodSelect ? addDoseMethodSelect.value : '';
+            if (!productName) {
+                announceSessionValidation('Enter a product name for this dose.', addDoseProductNameInput);
+                return;
+            }
+            if (!method) {
+                announceSessionValidation('Select a consumption method for this dose.', addDoseMethodSelect);
+                return;
+            }
+        } else if (!productName || !method) {
+            announceSessionValidation('Save session details before adding a dose.', sdmProductName);
+            return;
+        }
+        const unit = addDoseUnitSelect?.value || getDefaultDoseUnit();
+        const now = new Date();
+        const doseMeta = {
+            id: `dose-${now.getTime()}`,
+            ts: now.toISOString(),
+            elapsedSeconds: getElapsedSeconds(),
+            productName,
+            method,
+            dose: {
+                amount: hasAmount ? parsedAmount : null,
+                unit,
+            },
+        };
+        let updatedActive = addDoseToActiveSession(doseMeta);
+        if (!updatedActive) {
+            showAppAlert('Unable to save dose right now.');
+            return;
+        }
+        if (mode === 'new') {
+            updatedActive.productName = productName;
+            updatedActive.method = method;
+        }
+        if (!updatedActive.dose || typeof updatedActive.dose !== 'object') {
+            updatedActive.dose = {};
+        }
+        updatedActive.dose.unit = unit;
+        updatedActive.doseUnit = unit;
+        if (mode === 'new') {
+            if (hasAmount) {
+                updatedActive.dose.amount = parsedAmount;
+                updatedActive.doseAmount = parsedAmount;
+            } else {
+                updatedActive.dose.amount = null;
+                updatedActive.doseAmount = null;
+            }
+        } else if (hasAmount) {
+            updatedActive.dose.amount = parsedAmount;
+            updatedActive.doseAmount = parsedAmount;
+        }
+        setActiveSession(updatedActive);
+        setLastSession(updatedActive);
+        updateSessionSummary(updatedActive);
+        announce('Additional dose saved.');
+        clearAppAlert();
+        resetAddDoseForm();
+        hideAddDoseSection();
+        closeSessionDetailsModal();
+    };
+
+    const attachBannerTrigger = () => {
+        if (!sessionBanner) {
+            return;
+        }
+        const trigger = sessionBanner.querySelector('[data-session-trigger]');
+        if (trigger) {
+            trigger.addEventListener('click', (event) => {
+                event.preventDefault();
+                openSessionDetailsModal(event.currentTarget);
+            });
+        }
+    };
+
+    const renderSessionBanner = (hasDetails, { animate = false } = {}) => {
+        if (!sessionBanner) {
+            return;
+        }
+        if (hasDetails) {
+            sessionBanner.innerHTML = `
+                <div class="save-confirm" role="status" aria-live="polite">
+                    <span>Session details saved!</span>
+                    <button id="expandSessionBtn2" type="button" class="btn secondary" data-session-trigger>
+                        Edit Details
+                    </button>
+                </div>`;
+        } else {
+            sessionBanner.innerHTML = `
+                <p>
+                    Want to add more details to your session?
+                    <button id="expandSessionBtn" type="button" data-session-trigger data-tippy-content="Expand to enter session details.">
+                        Expand
+                    </button>
+                </p>`;
+        }
+        showElement(sessionBanner);
+        attachBannerTrigger();
+
+        if (hasDetails) {
+            const saveConfirmEl = sessionBanner.querySelector('.save-confirm');
+            if (saveConfirmEl && animate && !shouldReduceMotion()) {
+                saveConfirmEl.classList.add('save-confirm--enter');
+                const activateAnimation = () => {
+                    saveConfirmEl.classList.add('save-confirm--enter-active');
+                };
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(activateAnimation);
+                } else {
+                    activateAnimation();
+                }
+                saveConfirmEl.addEventListener('transitionend', () => {
+                    saveConfirmEl.classList.remove('save-confirm--enter');
+                    saveConfirmEl.classList.remove('save-confirm--enter-active');
+                }, { once: true });
+            }
+        }
+    };
+
+    const syncSessionDetailsUI = ({ animateBanner = false } = {}) => {
+        updateSessionSummary(getActiveSession());
+        renderSessionBanner(sessionDetailsSaved, { animate: animateBanner && sessionDetailsSaved });
+    };
+
+    const prefillSessionDetailsFields = () => {
+        const source = getActiveSession() || getLastSession();
+        const sourceDose = source && typeof source.dose === 'object' ? source.dose : null;
+        if (sdmProductName) {
+            sdmProductName.value = source?.productName || '';
+        }
+        if (sdmMethod) {
+            sdmMethod.value = source?.method || '';
+        }
+        if (sdmDose) {
+            const doseAmount = sourceDose?.amount ?? source?.doseAmount;
+            const normalizedAmount = typeof doseAmount === 'string' ? parseFloat(doseAmount) : doseAmount;
+            sdmDose.value = Number.isFinite(normalizedAmount) ? String(normalizedAmount) : '';
+        }
+        if (sdmUnit) {
+            sdmUnit.value = sourceDose?.unit || source?.doseUnit || 'mg';
+        }
+    };
+
+    const openSessionDetailsModal = (triggerEl) => {
+        if (!sessionDetailsModal) {
+            return;
+        }
+        sessionDetailsTriggerEl = triggerEl || document.activeElement || null;
+        hideAddDoseSection();
+        resetAddDoseForm();
+        prefillSessionDetailsFields();
+        const shouldStartInEditMode = openSessionDetailsInEditMode;
+        openSessionDetailsInEditMode = false;
+        setSessionDetailsEditMode(shouldStartInEditMode);
+        openModal('sessionDetails', sessionDetailsTriggerEl);
+        log('Session details modal opened');
+    };
+
+    const closeSessionDetailsModal = () => {
+        closeModal('sessionDetails');
+        hideAddDoseSection();
+        resetAddDoseForm();
+        sessionDetailsTriggerEl = null;
+        log('Session details modal closed');
+    };
+
+    const expandSessionDetails = (event) => {
+        const trigger = event?.currentTarget || event || sessionBtn || startBtn;
+        openSessionDetailsModal(trigger);
+    };
+
+    const focusElementSafe = (element) => {
+        if (!element || typeof element.focus !== 'function') {
+            return;
+        }
+        try {
+            element.focus({ preventScroll: true });
+        } catch (focusError) {
+            element.focus();
+        }
+    };
+
+    const announceSessionValidation = (message, focusTarget) => {
+        showAppAlert(message);
+        focusElementSafe(focusTarget);
+    };
+
+    let isSessionDetailsEditMode = false;
+    let openSessionDetailsInEditMode = false;
+
+    const baselineFields = [
+        sdmProductName,
+        sdmMethod,
+        sdmDose,
+        sdmUnit,
+    ].filter(Boolean);
+
+    const setSessionDetailsEditMode = (isEditing) => {
+        isSessionDetailsEditMode = Boolean(isEditing);
+        baselineFields.forEach((field) => {
+            field.disabled = !isSessionDetailsEditMode;
+            if (!isSessionDetailsEditMode) {
+                field.setAttribute('aria-disabled', 'true');
+            } else {
+                field.removeAttribute('aria-disabled');
+            }
+        });
+        if (sessionDetailsModal) {
+            sessionDetailsModal.classList.toggle('session-details-readonly', !isSessionDetailsEditMode);
+        }
+        if (sdmSaveBtn) {
+            sdmSaveBtn.textContent = isSessionDetailsEditMode ? 'Save' : 'Edit';
+        }
+    };
+
+    setSessionDetailsEditMode(false);
+
+    const handleSessionDetailsSave = () => {
+        if (!sdmProductName || !sdmMethod) {
+            return;
+        }
+        if (!isSessionDetailsEditMode) {
+            setSessionDetailsEditMode(true);
+            focusElementSafe(sdmProductName);
+            return;
+        }
+        const productName = sdmProductName.value.trim();
+        const method = sdmMethod.value.trim();
+        const rawDose = sdmDose ? sdmDose.value.trim() : '';
+        const hasDoseValue = rawDose.length > 0;
+        const doseAmount = hasDoseValue ? parseFloat(rawDose) : null;
+        const doseUnit = sdmUnit && sdmUnit.value ? sdmUnit.value : 'mg';
+
+        if (!productName) {
+            announceSessionValidation('Please enter a product name.', sdmProductName);
+            return;
+        }
+        if (!method) {
+            announceSessionValidation('Please select a consumption method.', sdmMethod);
+            return;
+        }
+        if (hasDoseValue && (!Number.isFinite(doseAmount) || doseAmount < 0)) {
+            announceSessionValidation('Dose must be zero or higher.', sdmDose);
+            return;
         }
 
-        showElement(sessionBanner);
+        const nowIso = new Date().toISOString();
+        const existing = getActiveSession() || {};
+        const active = {
+            ...existing,
+            productName,
+            method,
+            dose: {
+                amount: hasDoseValue ? doseAmount : null,
+                unit: doseUnit,
+            },
+            theme: existing.theme || getCurrentTheme(),
+        };
+        active.doseAmount = hasDoseValue ? doseAmount : null;
+        active.doseUnit = doseUnit;
+
+        const existingDoses = Array.isArray(existing.doses) ? existing.doses.slice() : [];
+        active.doses = existingDoses;
+
+        if (!active.startTime) {
+            active.startTime = nowIso;
+            active.elapsedSeconds = 0;
+        }
+        active.updatedAt = nowIso;
+
+        if (!Array.isArray(active.doses)) {
+            active.doses = [];
+        }
+        if (active.doses.length === 0) {
+            const baselineTimestamp = new Date(active.startTime || nowIso);
+            const baselineDose = {
+                id: `dose-${baselineTimestamp.getTime()}`,
+                ts: baselineTimestamp.toISOString(),
+                elapsedSeconds: active.elapsedSeconds || 0,
+                productName,
+                method,
+                dose: {
+                    amount: hasDoseValue ? doseAmount : null,
+                    unit: doseUnit,
+                },
+            };
+            active.doses.push(baselineDose);
+        }
+
+        setActiveSession(active);
+        setLastSession(active);
+        sessionDetailsSaved = true;
+        syncSessionDetailsUI({ animateBanner: true });
+        clearAppAlert();
+        closeSessionDetailsModal();
+        log('Session details saved');
 
         if (appSettings.autoStart && !timer.isRunning()) {
             startTimer();
         }
-    });
+    };
 
-    startBtn.addEventListener('click', () => {
+    const clearSessionDetailsState = () => {
+        const previousActive = getActiveSession();
+        if (previousActive) {
+            const normalizedLastSession = {
+                ...previousActive,
+                doses: Array.isArray(previousActive.doses) ? previousActive.doses.slice() : [],
+            };
+            setLastSession(normalizedLastSession);
+        }
+        setActiveSession(null);
+        sessionDetailsSaved = false;
+        hideAddDoseSection();
+        resetAddDoseForm();
+        if (sessionDoseSummary) {
+            sessionDoseSummary.textContent = '';
+            sessionDoseSummary.classList.add('hidden');
+        }
+        syncSessionDetailsUI();
+    };
+
+    syncSessionDetailsUI();
+
+    if (sdmSaveBtn) {
+        sdmSaveBtn.addEventListener('click', handleSessionDetailsSave);
+    }
+
+    if (sdmCancelBtn) {
+        sdmCancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeSessionDetailsModal();
+        });
+    }
+
+    if (sessionBtn) {
+        sessionBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            openSessionDetailsModal(event.currentTarget);
+        });
+    }
+
+    if (editSessionDetailsBtn) {
+        editSessionDetailsBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            openSessionDetailsModal(event.currentTarget);
+        });
+    }
+
+    startBtn.addEventListener('click', (event) => {
         if (!sessionDetailsSaved) {
-            expandSessionDetails();
+            event.preventDefault();
+            showAppAlert('Save your session details to start the timer.');
+            openSessionDetailsInEditMode = true;
+            expandSessionDetails(event);
             return;
         }
 
@@ -1166,19 +1906,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         announceTimerStatus('Timer reset');
         log('Timer reset');
 
-        sessionDetailsSaved = false;
-        productNameInput.value = '';
-        document.getElementById('consumptionMethod').value = '';
-        document.getElementById('doseAmount').value = '';
-        document.getElementById('doseUnit').value = 'mg';
-
-        sessionBanner.innerHTML = `
-            <p>
-                Want to add more details to your session?
-                <button id="expandSessionBtn">Expand</button>
-            </p>`;
-        showElement(sessionBanner);
-        hideElement(sessionDetails);
+        clearSessionDetailsState();
 
         if (logList) {
             logList.innerHTML = '';
@@ -1193,8 +1921,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
         timerContainer.focus();
         showAppAlert('Session reset. Timer 0 minutes.');
-
-        document.getElementById('expandSessionBtn').addEventListener('click', expandSessionDetails);
     });
 
     themeToggle.addEventListener('click', () => {
@@ -1260,6 +1986,24 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                     settingsBtn.setAttribute('aria-expanded', 'false');
                     settingsBtn.dataset.state = 'closed';
                 }
+            },
+            closeOnBackdrop: true,
+        },
+        sessionDetails: {
+            modal: sessionDetailsModal,
+            focusFirst: () => {
+                if (isSessionDetailsEditMode && (sdmProductName || sdmMethod || sdmDose)) {
+                    focusElementSafe(sdmProductName || sdmMethod || sdmDose);
+                    return;
+                }
+                if (sdmSaveBtn) {
+                    focusElementSafe(sdmSaveBtn);
+                }
+            },
+            onOpen: () => prefillSessionDetailsFields(),
+            onClose: () => {
+                sessionDetailsTriggerEl = null;
+                clearAppAlert();
             },
             closeOnBackdrop: true,
         },
@@ -1972,20 +2716,68 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     let shareType = 'simple'; 
 
+    const openShareModal = (triggerEl) => {
+        clearShareFeedback();
+        openModal('share', triggerEl || logsShareButton || shareBtn);
+        updateSharePreview();
+    };
+
     if (logsShareButton) {
         logsShareButton.addEventListener('click', (event) => {
             event.preventDefault();
-            clearShareFeedback();
-            openModal('share', logsShareButton);
-            updateSharePreview();
+            openShareModal(event.currentTarget);
         });
     }
 
-    shareBtn.addEventListener('click', () => {
-        log('Share button clicked!');
-        openModal('share', shareBtn);
-        updateSharePreview();
-    });
+    if (sdmShareBtn) {
+        sdmShareBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeSessionDetailsModal();
+            openShareModal(sdmShareBtn);
+        });
+    }
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            log('Share button clicked!');
+            openShareModal(event.currentTarget);
+        });
+    }
+
+    if (sdmAddDoseBtn) {
+        sdmAddDoseBtn.addEventListener('click', () => {
+            showAddDoseSection();
+        });
+    }
+
+    if (addDoseSaveBtn) {
+        addDoseSaveBtn.addEventListener('click', handleAddDoseSave);
+    }
+
+    if (addDoseCancelBtn) {
+        addDoseCancelBtn.addEventListener('click', () => {
+            hideAddDoseSection();
+            resetAddDoseForm();
+            focusElementSafe(sdmAddDoseBtn);
+        });
+    }
+
+    const addDoseModeRadios = Array.from(addDoseProductModeRadios || []);
+    if (addDoseModeRadios.length) {
+        addDoseModeRadios.forEach((radio) => {
+            radio.addEventListener('change', (event) => {
+                const target = event.currentTarget;
+                setDoseProductMode(target.value, { focusNewFields: target.value === 'new' });
+            });
+        });
+    }
+
+    if (sdmHistoryBtn) {
+        sdmHistoryBtn.addEventListener('click', () => {
+            log('Session Details: Session History coming soon.');
+        });
+    }
 
     simpleShareBtn.addEventListener('click', () => {
         shareType = 'simple';
@@ -2003,6 +2795,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         clearShareFeedback();
     });
 
+    const getShareProductName = () => {
+        const details = getActiveSession() || getLastSession();
+        return details && details.productName ? details.productName : 'No strain specified';
+    };
+
     const updateSharePreview = () => {
         const customMessage = shareMessage.value.trim();
         const friendlyTheme = `${themeNames[currentSkin] || 'Classic'} Theme`;
@@ -2018,7 +2815,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             const loggedMoments = logItems
                 .map(entry => entry.textContent.trim())
                 .join('\n');
-            const strainInfo = productName.value.trim() || 'No strain specified';
+            const strainInfo = getShareProductName();
 
             sharePreview.textContent = `
                 ${customMessage}
@@ -2073,5 +2870,3 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     updateDarkModeToggle();
 });
-
-    const logsShareButton = logsSection ? logsSection.querySelector('.share-btn') : null;

@@ -6,6 +6,11 @@
     --bg-color: #202020;
     --text-color: #f5f5f5;
     --border-color: #555;
+    --bt-text-primary: #f5f5f5;
+    --bt-text-secondary: rgba(245, 245, 245, 0.75);
+    --bt-divider-subtle: rgba(255, 255, 255, 0.12);
+    --bt-surface-panel: #2a2a2a;
+    --bt-surface-hover: rgba(255, 255, 255, 0.05);
 
     /* Button colors */
     --button-bg: #2ecc71;
@@ -25,6 +30,11 @@ body.light-mode {
     --bg-color: #f5f5f5;
     --text-color: #2c3e50;
     --border-color: #d3d3d3;
+    --bt-text-primary: #111111;
+    --bt-text-secondary: #444444;
+    --bt-divider-subtle: rgba(0, 0, 0, 0.08);
+    --bt-surface-panel: #ffffff;
+    --bt-surface-hover: rgba(17, 17, 17, 0.04);
 
     --button-bg: #2ecc71;
     --button-hover-bg: #27ae60;
@@ -518,6 +528,185 @@ button .icon {
     text-align: center;
     font-size: 1rem;
     color: var(--text-color);
+}
+
+.session-details {
+    background: var(--bt-surface-panel);
+    border: 1px solid var(--bt-divider-subtle);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    color: var(--bt-text-primary);
+}
+
+.session-details h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--bt-text-primary);
+    margin-top: 0;
+}
+
+#sessionSummaryEmpty {
+    color: var(--bt-text-secondary);
+}
+
+.session-summary-list {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0 0;
+    border-top: 1px solid var(--bt-divider-subtle);
+}
+
+.session-summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--bt-divider-subtle);
+}
+
+.session-summary-row:last-child {
+    border-bottom: none;
+}
+
+.session-summary-row dt {
+    margin: 0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bt-text-secondary);
+}
+
+.session-summary-row dd {
+    margin: 0;
+    font-weight: 600;
+    color: var(--bt-text-primary);
+}
+
+.dose-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.dose-wrapper input {
+    flex: 1;
+}
+
+.session-dose-summary {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--bt-text-secondary);
+}
+
+.dose-most-recent-summary {
+    margin-top: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--bt-text-primary);
+}
+
+.dose-timeline-container {
+    margin-top: 1rem;
+    border-top: 1px solid var(--bt-divider-subtle);
+    padding-top: 0.75rem;
+}
+
+.dose-timeline-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.dose-group {
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--bt-divider-subtle);
+}
+
+.dose-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.dose-group__title {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--bt-text-secondary);
+}
+
+.dose-group__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.dose-group__item {
+    display: flex;
+    gap: 0.65rem;
+    align-items: baseline;
+    font-size: 0.95rem;
+    color: var(--bt-text-primary);
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.4rem;
+    transition: background-color 0.2s ease;
+}
+
+.dose-group__item:hover,
+.dose-group__item:focus-within {
+    background-color: var(--bt-surface-hover);
+}
+
+.dose-group__time {
+    min-width: 5rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--bt-text-secondary);
+}
+
+.dose-group__description {
+    flex: 1;
+    color: var(--bt-text-primary);
+}
+
+.add-dose-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.add-dose-title {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.radio-group label {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.add-dose-new-product {
+    margin-top: 1rem;
+}
+
+.add-dose-actions {
+    margin-top: 1rem;
+    gap: 0.75rem;
+}
+
+#sessionDetailsModal.session-details-readonly :is(#sdmProductName, #sdmMethod, #sdmDose, #sdmUnit) {
+    opacity: 0.65;
+    cursor: not-allowed;
 }
 
 .session-banner button {
@@ -1148,4 +1337,14 @@ body.light-mode .history-item[data-expanded="true"] .history-details {
     border: 1px solid #3a3a3a;
     padding: 0.4rem 0.75rem;
     border-radius: 0.6rem;
+}
+.dose-timeline-caption {
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--bt-text-secondary);
+}
+.session-details-footer {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bt-divider-subtle);
 }
