@@ -204,13 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const appAlerts = document.getElementById('appAlerts');
     const timerLive = document.getElementById('timer-status');
-    const historyModal = document.getElementById('historyModal');
-    const historyBackdrop = document.getElementById('historyBackdrop');
-    const historyList = document.getElementById('historyList');
-    const historyEmpty = document.getElementById('historyEmpty');
-    const closeHistoryBtn = document.getElementById('closeHistory');
-    const exportHistoryBtn = document.getElementById('exportHistory');
-    const historyHelp = document.getElementById('historyHelp');
+    const sessionHistoryModal = document.getElementById('sessionHistoryModal');
+    const sessionHistoryBackdrop = document.getElementById('sessionHistoryBackdrop');
+    const sessionHistoryList = document.getElementById('sessionHistoryList');
+    const sessionHistoryEmpty = document.getElementById('sessionHistoryEmpty');
+    const sessionHistoryCloseBtn = document.getElementById('sessionHistoryClose');
+    const sessionHistoryExportBtn = document.getElementById('sessionHistoryExport');
+    const sessionHistoryClearBtn = document.getElementById('sessionHistoryClear');
     const appRoot = document.getElementById('app') || document.body;
     const appContent = document.querySelector('.app-content') || document.querySelector('main');
     const openModals = new Map();
@@ -337,7 +337,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     const loadSettingsFromStore = SettingsStore.loadSettings;
     const saveSettingsToStore = SettingsStore.saveSettings;
 
-    const HISTORY_STORAGE_KEY = 'bt:sessions';
+    const MAX_SESSION_HISTORY = 20;
+    const HISTORY_STORAGE_KEY = 'buzzTimerSessionHistory';
+    const LEGACY_HISTORY_STORAGE_KEYS = Object.freeze(['bt:sessions']);
 
     const ANNOUNCEMENT_STEPS = Object.freeze({
         off: 0,
@@ -346,6 +348,12 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     });
 
     const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
+    const clampHistoryRetention = (value) => {
+        if (!Number.isFinite(value)) {
+            return MAX_SESSION_HISTORY;
+        }
+        return clampNumber(value, 0, MAX_SESSION_HISTORY);
+    };
 
     const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
@@ -513,7 +521,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     saveSettingsToStore(appSettings, settingsStorageAdapter);
 
-    let historyRetention = appSettings.historyRetention;
+    let historyRetention = clampHistoryRetention(appSettings.historyRetention);
     let announcementCadence = appSettings.announceCadence;
 
     const reduceMotionQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -545,7 +553,21 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     const fmtDate = (timestamp) => {
         try {
-            const date = new Date(typeof timestamp === 'number' ? timestamp : Number(timestamp));
+            let dateSource = timestamp;
+            if (!(timestamp instanceof Date)) {
+                if (typeof timestamp === 'number') {
+                    dateSource = timestamp;
+                } else if (typeof timestamp === 'string') {
+                    dateSource = timestamp;
+                } else {
+                    dateSource = Number(timestamp);
+                }
+            }
+            let date = dateSource instanceof Date ? dateSource : new Date(dateSource);
+            if (Number.isNaN(date.getTime())) {
+                const numericFallback = Number(timestamp);
+                date = new Date(numericFallback);
+            }
             if (Number.isNaN(date.getTime())) {
                 return 'Unknown date';
             }
@@ -636,30 +658,49 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     };
 
     let sessionStartTimestamp = null;
-    let sessionEffects = [];
-    let sessionHighIdeas = [];
-    let historyOpener = null;
-    let applyThemeFromHistory = null;
+    let currentSessionLog = [];
 
     const getElapsedSeconds = () => Math.floor(currentElapsedMs / 1000);
 
-    const listSessions = () => {
-        const stored = safeStorageParse(HISTORY_STORAGE_KEY);
-        if (!Array.isArray(stored)) {
+    const normalizeHistoryEntries = (entries) => {
+        if (!Array.isArray(entries)) {
             return [];
         }
-        return stored.filter((entry) => entry && typeof entry === 'object');
+        return entries
+            .filter((entry) => entry && typeof entry === 'object')
+            .slice(0, MAX_SESSION_HISTORY);
     };
 
     const persistSessions = (sessions) => {
+        const sanitized = normalizeHistoryEntries(sessions);
         try {
-            safeStorageSet(HISTORY_STORAGE_KEY, JSON.stringify(sessions));
+            safeStorageSet(HISTORY_STORAGE_KEY, JSON.stringify(sanitized));
         } catch (error) {
             warn('BuzzTimer: unable to persist sessions', error);
         }
+        return sanitized;
     };
 
-    const getRetention = () => historyRetention;
+    const migrateLegacyHistory = () => {
+        for (const key of LEGACY_HISTORY_STORAGE_KEYS) {
+            const legacy = safeStorageParse(key);
+            safeStorageRemove(key);
+            if (Array.isArray(legacy) && legacy.length) {
+                return persistSessions(legacy);
+            }
+        }
+        return [];
+    };
+
+    const listSessions = () => {
+        let stored = safeStorageParse(HISTORY_STORAGE_KEY);
+        if (!Array.isArray(stored) || stored.length === 0) {
+            stored = migrateLegacyHistory();
+        }
+        return normalizeHistoryEntries(stored);
+    };
+
+    const getRetention = () => clampHistoryRetention(historyRetention);
 
     const saveSession = (session) => {
         const retention = getRetention();
@@ -669,18 +710,101 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         const existing = listSessions();
         const next = [session, ...existing].slice(0, retention);
         persistSessions(next);
+        refreshSessionHistoryUI();
     };
 
     const removeSessionById = (id) => {
         const existing = listSessions();
         const filtered = existing.filter((entry) => entry.id !== id);
         persistSessions(filtered);
+        refreshSessionHistoryUI();
     };
 
     const resetSessionCapture = () => {
         sessionStartTimestamp = null;
-        sessionEffects = [];
-        sessionHighIdeas = [];
+        currentSessionLog = [];
+    };
+
+    const cloneLogEntries = (entries) => {
+        if (!Array.isArray(entries)) {
+            return [];
+        }
+        return entries.map((entry) => ({ ...entry }));
+    };
+
+    const generateLogEntryId = () => `log-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
+
+    const captureLogEntryForHistory = (entry) => {
+        if (!sessionStartTimestamp || !entry) {
+            return;
+        }
+        currentSessionLog = Array.isArray(currentSessionLog) ? currentSessionLog : [];
+        currentSessionLog.push({ ...entry });
+    };
+
+    const removeCapturedLogEntry = (logId) => {
+        if (!logId || !Array.isArray(currentSessionLog)) {
+            return;
+        }
+        currentSessionLog = currentSessionLog.filter((entry) => entry.id !== logId);
+    };
+
+    const beginSessionCapture = () => {
+        if (sessionStartTimestamp) {
+            return;
+        }
+        const active = getActiveSession();
+        if (!sessionDetailsSaved || !hasSessionBaseline(active)) {
+            return;
+        }
+        sessionStartTimestamp = Date.now();
+        currentSessionLog = [];
+    };
+
+    const buildCompletedSessionRecord = ({ elapsedMs = 0, reason = 'manual-reset' } = {}) => {
+        if (!sessionStartTimestamp) {
+            return null;
+        }
+        const active = getActiveSession();
+        if (!sessionDetailsSaved || !hasSessionBaseline(active)) {
+            return null;
+        }
+        const endMs = Date.now();
+        const safeElapsedMs = Math.max(elapsedMs || 0, endMs - sessionStartTimestamp);
+        const elapsedSeconds = Math.max(0, Math.floor(safeElapsedMs / 1000));
+        const themeId = active?.theme || getCurrentTheme();
+        const logEntries = cloneLogEntries(currentSessionLog);
+        const moments = logEntries.filter((entry) => entry.type === 'moment');
+        const highIdeas = logEntries.filter((entry) => entry.type === 'idea');
+        return {
+            id: `session-${endMs}`,
+            startedAt: new Date(sessionStartTimestamp).toISOString(),
+            endedAt: new Date(endMs).toISOString(),
+            elapsedSeconds,
+            durationSeconds: elapsedSeconds,
+            elapsedMs: safeElapsedMs,
+            productName: active?.productName || '',
+            method: active?.method || '',
+            doseAmount: active?.dose?.amount ?? active?.doseAmount ?? null,
+            doseUnit: active?.dose?.unit || active?.doseUnit || getDefaultDoseUnit(),
+            doses: Array.isArray(active?.doses) ? active.doses.map((dose) => ({ ...dose })) : [],
+            theme: themeId,
+            themeLabel: themeNames[themeId] || themeId,
+            log: logEntries,
+            moments,
+            highIdeas,
+            logCount: logEntries.length,
+            reason,
+        };
+    };
+
+    const archiveCurrentSession = ({ elapsedMs = 0, reason = 'manual-reset' } = {}) => {
+        const record = buildCompletedSessionRecord({ elapsedMs, reason });
+        if (record) {
+            saveSession(record);
+        }
+        resetSessionCapture();
+        return record;
     };
 
     const describeDurationForAria = (ms = 0) => {
@@ -728,6 +852,289 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             parts.push(doseParts.join(' '));
         }
         return parts.join(', ');
+    };
+
+    const formatHistoryDuration = (session) => {
+        let ms = 0;
+        if (Number.isFinite(session?.elapsedMs)) {
+            ms = session.elapsedMs;
+        } else if (Number.isFinite(session?.elapsedSeconds)) {
+            ms = session.elapsedSeconds * 1000;
+        } else if (Number.isFinite(session?.durationSeconds)) {
+            ms = session.durationSeconds * 1000;
+        }
+        return describeDurationForAria(ms);
+    };
+
+    const formatHistoryStartLabel = (session) => {
+        if (!session) {
+            return 'Unknown start';
+        }
+        return fmtDate(session.startedAt || session.endedAt || Date.now());
+    };
+
+    const getSessionProductName = (session) => {
+        if (!session) {
+            return 'Unnamed Session';
+        }
+        const name = typeof session.productName === 'string' ? session.productName.trim() : '';
+        return name || 'Unnamed Session';
+    };
+
+    const formatHistoryMethod = (session) => {
+        if (!session || !session.method) {
+            return 'Method not set';
+        }
+        return session.method;
+    };
+
+    const getSessionThemeLabel = (session) => {
+        if (!session) {
+            return 'Classic';
+        }
+        return themeNames[session.theme] || session.theme || 'Classic';
+    };
+
+    const formatHistoryDose = (session) => {
+        if (!session) {
+            return 'Not recorded';
+        }
+        const amount = session.doseAmount ?? session.dose?.amount;
+        const unit = session.doseUnit || session.dose?.unit || 'mg';
+        if (amount === null || amount === undefined || amount === '') {
+            return unit;
+        }
+        if (!Number.isFinite(amount)) {
+            return `${unit}`.trim();
+        }
+        return `${amount} ${unit}`.trim();
+    };
+
+    const createMetaRow = (label, value) => {
+        const row = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = label;
+        const content = document.createElement('span');
+        content.textContent = value;
+        row.append(title, content);
+        return row;
+    };
+
+    const renderHistoryLogSection = (entries, headingText) => {
+        if (!Array.isArray(entries) || entries.length === 0) {
+            return null;
+        }
+        const section = document.createElement('div');
+        section.className = 'session-history-ideas';
+
+        const heading = document.createElement('strong');
+        heading.className = 'session-history-row-title';
+        heading.textContent = headingText;
+        section.appendChild(heading);
+
+        entries.forEach((entry) => {
+            const row = document.createElement('div');
+            const timeEl = document.createElement('time');
+            timeEl.dateTime = entry.timeISO || '';
+            if (Number.isFinite(entry.elapsedSeconds)) {
+                timeEl.textContent = formatTime(Math.max(0, Math.floor(entry.elapsedSeconds)));
+            } else {
+                timeEl.textContent = entry.timeText || '—';
+            }
+            const textEl = document.createElement('span');
+            textEl.textContent = entry.text || '';
+            row.append(timeEl, textEl);
+            section.appendChild(row);
+        });
+        return section;
+    };
+
+    const renderDoseTimeline = (doses, fallbackName) => {
+        if (!Array.isArray(doses) || doses.length === 0) {
+            return null;
+        }
+        const listWrapper = document.createElement('div');
+        listWrapper.className = 'session-history-ideas';
+        const heading = document.createElement('strong');
+        heading.className = 'session-history-row-title';
+        heading.textContent = 'Dose timeline';
+        listWrapper.appendChild(heading);
+        doses.forEach((dose) => {
+            const row = document.createElement('div');
+            const timeEl = document.createElement('time');
+            timeEl.dateTime = dose.ts || '';
+            if (Number.isFinite(dose.elapsedSeconds)) {
+                timeEl.textContent = formatTime(Math.max(0, Math.floor(dose.elapsedSeconds)));
+            } else if (dose.ts) {
+                timeEl.textContent = fmtDate(dose.ts);
+            } else {
+                timeEl.textContent = '—';
+            }
+            const textEl = document.createElement('span');
+            const parts = [];
+            if (Number.isFinite(dose.dose?.amount)) {
+                parts.push(`${dose.dose.amount} ${dose.dose.unit || ''}`.trim());
+            } else if (dose.dose?.unit) {
+                parts.push(dose.dose.unit);
+            }
+            if (dose.productName) {
+                parts.push(dose.productName);
+            } else if (fallbackName) {
+                parts.push(fallbackName);
+            }
+            if (dose.method) {
+                parts.push(dose.method);
+            }
+            textEl.textContent = parts.filter(Boolean).join(' • ') || 'Dose';
+            row.append(timeEl, textEl);
+            listWrapper.appendChild(row);
+        });
+        return listWrapper;
+    };
+
+    const renderSessionHistoryItem = (session) => {
+        const item = document.createElement('li');
+        item.className = 'session-history-item';
+        item.dataset.sessionId = session.id || '';
+
+        const rowButton = document.createElement('button');
+        rowButton.type = 'button';
+        rowButton.className = 'session-history-row';
+        rowButton.setAttribute('aria-expanded', 'false');
+
+        const rowContent = document.createElement('div');
+        rowContent.className = 'session-history-row-content';
+
+        const title = document.createElement('p');
+        title.className = 'session-history-row-title';
+        title.textContent = getSessionProductName(session);
+
+        const subtitle = document.createElement('p');
+        subtitle.className = 'session-history-row-subtitle';
+        const methodSpan = document.createElement('span');
+        methodSpan.className = 'session-history-row-pill';
+        methodSpan.textContent = formatHistoryMethod(session);
+        const startSpan = document.createElement('span');
+        startSpan.className = 'session-history-row-pill';
+        startSpan.textContent = formatHistoryStartLabel(session);
+        const durationSpan = document.createElement('span');
+        durationSpan.className = 'session-history-row-pill';
+        durationSpan.textContent = formatHistoryDuration(session);
+        subtitle.append(
+            methodSpan,
+            document.createTextNode(' • '),
+            startSpan,
+            document.createTextNode(' • '),
+            durationSpan
+        );
+
+        rowContent.append(title, subtitle);
+
+        const tagGroup = document.createElement('div');
+        tagGroup.className = 'session-history-tags';
+        const methodTag = document.createElement('span');
+        methodTag.className = 'session-history-tag';
+        methodTag.textContent = formatHistoryMethod(session);
+        const doseTag = document.createElement('span');
+        doseTag.className = 'session-history-tag';
+        doseTag.textContent = formatHistoryDose(session);
+        const themeTag = document.createElement('span');
+        themeTag.className = 'session-history-tag';
+        themeTag.textContent = `${getSessionThemeLabel(session)} theme`;
+        tagGroup.append(methodTag, doseTag, themeTag);
+
+        const chevron = document.createElement('span');
+        chevron.className = 'session-history-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '⌄';
+
+        rowButton.append(rowContent, tagGroup, chevron);
+
+        const details = document.createElement('div');
+        details.className = 'session-history-details';
+        details.hidden = true;
+
+        const meta = document.createElement('div');
+        meta.className = 'session-history-meta';
+        meta.append(
+            createMetaRow('Duration', formatHistoryDuration(session)),
+            createMetaRow('Started', formatHistoryStartLabel(session)),
+            createMetaRow('Theme', getSessionThemeLabel(session)),
+            createMetaRow('Method', formatHistoryMethod(session)),
+            createMetaRow('Dose', formatHistoryDose(session)),
+        );
+        details.appendChild(meta);
+
+        const doseTimeline = renderDoseTimeline(session.doses, session.productName);
+        if (doseTimeline) {
+            details.appendChild(doseTimeline);
+        }
+
+        const momentsSection = renderHistoryLogSection(session.moments, 'Moments');
+        if (momentsSection) {
+            details.appendChild(momentsSection);
+        }
+        const ideasSection = renderHistoryLogSection(session.highIdeas, 'High Ideas');
+        if (ideasSection) {
+            details.appendChild(ideasSection);
+        }
+
+        item.dataset.expanded = 'false';
+        rowButton.addEventListener('click', () => {
+            const nextState = item.dataset.expanded !== 'true';
+            item.dataset.expanded = nextState ? 'true' : 'false';
+            rowButton.setAttribute('aria-expanded', nextState ? 'true' : 'false');
+            details.hidden = !nextState;
+        });
+
+        item.append(rowButton, details);
+        return item;
+    };
+
+    const refreshSessionHistoryUI = () => {
+        if (!sessionHistoryList) {
+            return;
+        }
+        const sessions = listSessions();
+        sessionHistoryList.innerHTML = '';
+        if (!sessions.length) {
+            if (sessionHistoryEmpty) {
+                sessionHistoryEmpty.classList.remove('hidden');
+            }
+            return;
+        }
+        if (sessionHistoryEmpty) {
+            sessionHistoryEmpty.classList.add('hidden');
+        }
+        const fragment = document.createDocumentFragment();
+        sessions.forEach((session) => {
+            fragment.appendChild(renderSessionHistoryItem(session));
+        });
+        sessionHistoryList.appendChild(fragment);
+    };
+
+    const openSessionHistory = (triggerEl) => {
+        refreshSessionHistoryUI();
+        openModal('sessionHistory', triggerEl);
+    };
+
+    const clearAllSessionHistory = () => {
+        persistSessions([]);
+        refreshSessionHistoryUI();
+    };
+
+    const handleClearSessionHistoryClick = () => {
+        // Manual test:
+        // 1. Create sessions and verify they appear in Session History.
+        // 2. Open Session History, click "Clear all history", confirm the dialog.
+        // 3. Ensure the list shows the empty-state message and remains empty after refresh.
+        // 4. Hover/focus Session Details button to confirm tooltip reads "View and edit your session details".
+        const confirmed = confirm('Clear all saved sessions? This cannot be undone.');
+        if (!confirmed) {
+            return;
+        }
+        clearAllSessionHistory();
+        showAppAlert('Session history cleared.');
     };
 
     const exportSessionsToFile = (sessions, filename = 'buzz-timer-history.json') => {
@@ -899,6 +1306,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         if (list === logList) {
             hideLogsIfEmpty();
         }
+        if (listItem.dataset.logId) {
+            removeCapturedLogEntry(listItem.dataset.logId);
+        }
         const timeNode = listItem.querySelector('.log-time');
         const badgeNode = listItem.querySelector('.log-badge');
         if (logLiveRegion && timeNode && badgeNode) {
@@ -906,9 +1316,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
     };
 
-    const renderLogItem = ({ type, timeText, timeISO, text }) => {
+    const renderLogItem = ({ id, type, timeText, timeISO, text }) => {
         const li = document.createElement('li');
         li.dataset.type = type;
+        li.dataset.logId = id;
 
         const timeEl = document.createElement('time');
         timeEl.className = 'log-time';
@@ -945,14 +1356,21 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     };
 
     const addLogEntry = (entry) => {
-        if (!logList) return;
-        const item = renderLogItem(entry);
+        if (!logList) return null;
+        const enrichedEntry = {
+            id: entry.id || generateLogEntryId(),
+            createdAt: entry.createdAt || new Date().toISOString(),
+            ...entry,
+        };
+        const item = renderLogItem(enrichedEntry);
         logList.insertBefore(item, logList.firstChild);
         ensureLogsVisible();
         if (logLiveRegion) {
-            const label = entry.type === 'idea' ? 'idea' : 'moment';
-            logLiveRegion.textContent = `Added ${label} at ${entry.timeText}: ${entry.text}`;
+            const label = enrichedEntry.type === 'idea' ? 'idea' : 'moment';
+            logLiveRegion.textContent = `Added ${label} at ${enrichedEntry.timeText}: ${enrichedEntry.text}`;
         }
+        captureLogEntryForHistory(enrichedEntry);
+        return enrichedEntry;
     };
 
     const clampVolume = (value) => clampNumber(Number.isFinite(value) ? value : appSettings.beepVolume, 0, 1);
@@ -1148,6 +1566,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         if (timer.isRunning()) {
             return;
         }
+        beginSessionCapture();
         timer.start();
         setStartButtonState('pause');
         setTimerRunningVisual(true);
@@ -1899,6 +2318,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
 
         lastCadenceMinute = -1;
+        const elapsedMsBeforeReset = timer.getElapsedMs();
+        archiveCurrentSession({ elapsedMs: elapsedMsBeforeReset, reason: 'manual-reset' });
         timer.reset();
         setStartButtonState('start');
         setTimerRunningVisual(false);
@@ -2059,6 +2480,27 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             focusFirst: () => copyLink.focus(),
             onOpen: () => clearShareFeedback(),
             onClose: () => clearShareFeedback(),
+        },
+        // Manual test for Session History overlay:
+        // 1. Create a session, log at least one entry, reset to add history.
+        // 2. Open Session History from both Session Details and Settings.
+        // 3. Confirm backdrop fully dims UI, timer banner does not bleed through.
+        // 4. Press Escape to close and ensure focus returns to the opener.
+        sessionHistory: {
+            modal: sessionHistoryModal,
+            backdrop: sessionHistoryBackdrop,
+            focusFirst: () => {
+                const firstRow = sessionHistoryList?.querySelector('.session-history-row');
+                if (firstRow) {
+                    focusElementSafe(firstRow);
+                } else if (sessionHistoryCloseBtn) {
+                    focusElementSafe(sessionHistoryCloseBtn);
+                } else if (sessionHistoryModal) {
+                    focusElementSafe(sessionHistoryModal);
+                }
+            },
+            onOpen: () => refreshSessionHistoryUI(),
+            closeOnBackdrop: true,
         },
     };
 
@@ -2285,7 +2727,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             reduceMotionToggle.checked = Boolean(appSettings.reduceMotionRespect);
         }
         if (historySizeInput) {
-            historySizeInput.value = String(appSettings.historyRetention);
+            historySizeInput.value = String(clampHistoryRetention(appSettings.historyRetention));
         }
         if (announceCadenceSelect) {
             announceCadenceSelect.value = appSettings.announceCadence;
@@ -2293,7 +2735,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     };
 
     const applySettings = (settings, options = {}) => {
-        historyRetention = settings.historyRetention;
+        historyRetention = clampHistoryRetention(settings.historyRetention);
         announcementCadence = settings.announceCadence;
         syncReduceMotionClass();
 
@@ -2486,6 +2928,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     if (settingsForm) {
         settingsForm.addEventListener('submit', (event) => {
             event.preventDefault();
+            const requestedRetention = historySizeInput ? parseInt(historySizeInput.value, 10) : appSettings.historyRetention;
             const nextSettings = {
                 theme: themeSelect ? themeSelect.value : appSettings.theme,
                 enablePulseGlow: pulseGlowToggle ? pulseGlowToggle.checked : appSettings.enablePulseGlow,
@@ -2494,16 +2937,15 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 autoStart: autoStartToggle ? autoStartToggle.checked : appSettings.autoStart,
                 confirmReset: confirmResetToggle ? confirmResetToggle.checked : appSettings.confirmReset,
                 reduceMotionRespect: reduceMotionToggle ? reduceMotionToggle.checked : appSettings.reduceMotionRespect,
-                historyRetention: historySizeInput ? parseInt(historySizeInput.value, 10) : appSettings.historyRetention,
                 announceCadence: announceCadenceSelect ? announceCadenceSelect.value : appSettings.announceCadence,
             };
 
             if (!Number.isFinite(nextSettings.beepVolume)) {
                 nextSettings.beepVolume = appSettings.beepVolume;
             }
-            if (!Number.isFinite(nextSettings.historyRetention)) {
-                nextSettings.historyRetention = appSettings.historyRetention;
-            }
+            nextSettings.historyRetention = clampHistoryRetention(
+                Number.isFinite(requestedRetention) ? requestedRetention : appSettings.historyRetention
+            );
 
             commitSettings(nextSettings, { message: 'Settings saved.' });
             closeSettings();
@@ -2544,6 +2986,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     setStartButtonState(timer.isRunning() ? 'pause' : 'start');
     setTimerRunningVisual(timer.isRunning());
     log('Timer and theme logic restored.');
+    refreshSessionHistoryUI();
 
     if (logBtn) {
         logBtn.addEventListener('click', () => {
@@ -2576,6 +3019,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 timeText: timeString,
                 timeISO: toISODuration(elapsedSeconds),
                 text: momentText,
+                elapsedSeconds,
             });
 
             if (momentEffectInput) {
@@ -2685,6 +3129,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 timeText: timeString,
                 timeISO: toISODuration(elapsedSeconds),
                 text: displayText,
+                elapsedSeconds,
             });
 
             if (ideaTextarea) {
@@ -2774,8 +3219,36 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     }
 
     if (sdmHistoryBtn) {
-        sdmHistoryBtn.addEventListener('click', () => {
-            log('Session Details: Session History coming soon.');
+        sdmHistoryBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeSessionDetailsModal();
+            openSessionHistory(sdmHistoryBtn);
+        });
+    }
+
+    if (openHistoryButton) {
+        openHistoryButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeSettings();
+            openSessionHistory(openHistoryButton);
+        });
+    }
+
+    if (sessionHistoryExportBtn) {
+        sessionHistoryExportBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            const sessions = listSessions();
+            if (!sessions.length) {
+                showAppAlert('No sessions to export yet.');
+            }
+            exportSessionsToFile(sessions);
+        });
+    }
+
+    if (sessionHistoryClearBtn) {
+        sessionHistoryClearBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            handleClearSessionHistoryClick();
         });
     }
 
