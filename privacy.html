@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-env="production">
+<head>
+  <meta charset="UTF-8">
+  <meta name="buzz:env" content="production">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuzzTimer &ndash; Privacy</title>
+
+  <!-- Popper.js (required by Tippy) -->
+  <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+  <!-- Tippy.js (the main library) -->
+  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+
+  <!-- Add Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+  </style>
+</head>
+<body id="app">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="static-header" role="banner">
+    <a class="static-header__brand" href="index.html">BuzzTimer</a>
+  </header>
+
+  <main id="main" class="static-main" tabindex="-1">
+    <div class="static-main__content">
+      <h1>Privacy</h1>
+      <p>Your buzz, your data.</p>
+      <p>BuzzTimer is designed to keep things simple and local:</p>
+
+      <ul class="content-list">
+        <li>
+          <p>No accounts, no social features.</p>
+          <p>You don&rsquo;t need a login to use BuzzTimer. It&rsquo;s built as a single-page web app.</p>
+        </li>
+        <li>
+          <p>Data stays on your device.</p>
+          <p>Session logs, notes, and settings are stored in your browser (for example, using local storage). The app does not maintain a central database of your entries, and your data is not sold.</p>
+        </li>
+        <li>
+          <p>No targeted ads or hidden third-party trackers in the core app experience.</p>
+          <p>BuzzTimer isn&rsquo;t built around ad tech. If this ever changes, this page will be updated before any new tracking goes live.</p>
+        </li>
+        <li>
+          <p>What you write is for you.</p>
+          <p>Your sessions, moments, and ideas are meant for your own reflection. If you share screenshots or export anything, remember you&rsquo;re the one choosing where that information goes.</p>
+        </li>
+      </ul>
+
+      <p>BuzzTimer is not a secure medical record system and shouldn&rsquo;t be used as one. Avoid entering sensitive personal details that you wouldn&rsquo;t be comfortable having on your device.</p>
+
+      <p>If a future version adds features like cloud backup, accounts, or optional analytics, this Privacy section will be updated in clear language so you can make an informed choice.</p>
+    </div>
+  </main>
+
+  <footer role="contentinfo" class="site-footer">
+    <p>&copy; BuzzTimer</p>
+    <nav aria-label="Footer">
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="privacy.html" aria-current="page">Privacy</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
+  </footer>
+</body>
+</html>

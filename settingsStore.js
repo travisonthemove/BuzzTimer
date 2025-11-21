@@ -7,18 +7,14 @@
 })(typeof window !== 'undefined' ? window : this, function () {
     const SETTINGS_STORAGE_KEY = 'bt:v1:settings';
     const THEME_OPTIONS = ['classic', 'calm', 'retro', 'partyvibe'];
-    const ANNOUNCE_OPTIONS = ['off', '1m', '5m'];
 
     const DEFAULT_SETTINGS = Object.freeze({
         theme: 'classic',
         enablePulseGlow: true,
-        enableBeep: true,
-        beepVolume: 0.6,
         autoStart: true,
         confirmReset: true,
         reduceMotionRespect: true,
         historyRetention: 10,
-        announceCadence: '1m',
         version: 1,
     });
 
@@ -52,13 +48,6 @@
         return DEFAULT_SETTINGS.theme;
     };
 
-    const pickAnnounce = (value) => {
-        if (ANNOUNCE_OPTIONS.includes(value)) {
-            return value;
-        }
-        return DEFAULT_SETTINGS.announceCadence;
-    };
-
     const normalizeSettings = (input) => {
         const base = { ...DEFAULT_SETTINGS };
         if (!input || typeof input !== 'object') {
@@ -72,15 +61,6 @@
         }
         if ('enablePulseGlow' in input) {
             result.enablePulseGlow = toBoolean(input.enablePulseGlow, base.enablePulseGlow);
-        }
-        if ('enableBeep' in input) {
-            result.enableBeep = toBoolean(input.enableBeep, base.enableBeep);
-        }
-        if ('beepVolume' in input) {
-            const volume = typeof input.beepVolume === 'string'
-                ? parseFloat(input.beepVolume)
-                : Number(input.beepVolume);
-            result.beepVolume = clamp(Number.isFinite(volume) ? volume : base.beepVolume, 0, 1);
         }
         if ('autoStart' in input) {
             result.autoStart = toBoolean(input.autoStart, base.autoStart);
@@ -104,10 +84,6 @@
                 50
             );
         }
-        if ('announceCadence' in input) {
-            result.announceCadence = pickAnnounce(input.announceCadence);
-        }
-
         result.version = 1;
         return result;
     };
@@ -215,4 +191,3 @@
         createMemoryStorage,
     };
 });
-

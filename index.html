@@ -43,7 +43,7 @@
       </p>
 
     <!-- Active Theme Display-->
-      <p id="activeThemeText" class="theme-line">Active Theme: (none)</p>
+      <p id="activeThemeText" class="theme-line theme-status">Active Theme: (none)</p>
 
     <!-- Theme Container -->
       <div class="theme-container">
@@ -224,15 +224,17 @@
     <!-- Session Banner and Details -->
     <div class="session-banner" id="sessionBanner">
       <p>
-        Want to add more details to your session?
-        <button id="expandSessionBtn" data-tippy-content="Expand to enter session details.">
-          Expand
-        </button>
+        <span class="session-expand-line">
+          Want to add more details to your session?
+          <button id="expandSessionBtn" class="session-expand-btn" data-tippy-content="Expand to enter session details.">
+            Expand
+          </button>
+        </span>
       </p>
     </div>
 
     <div class="session-details hidden" id="sessionDetails">
-      <h3>
+      <h3 class="session-details-title">
         <img src="static/icons/session.svg" alt="" style="width: 24px; height: 24px;">
         Session Details
       </h3>
@@ -522,8 +524,15 @@
     </button>
   </div> <!-- End app-container -->
   </main>
-  <footer role="contentinfo" class="site-footer">
-    <p>© BuzzTimer</p>
+  <footer role="contentinfo" class="site-footer app-footer">
+    <p class="footer-copy">&copy; BuzzTimer</p>
+    <nav aria-label="Footer">
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
   </footer>
 
   <div id="modal-root">
@@ -557,27 +566,6 @@
             </label>
           </section>
 
-          <section class="menu-section" aria-labelledby="settingsAudioTitle">
-            <p id="settingsAudioTitle" class="menu-title">Audio</p>
-            <label class="menu-checkbox" for="settingsEnableBeep">
-              <input type="checkbox" id="settingsEnableBeep" name="enableBeep">
-              <span>Play timer cadence beep</span>
-            </label>
-            <div class="menu-row range-row">
-              <label for="settingsBeepVolume">
-                <span>Beep volume</span>
-              </label>
-              <input type="range"
-                     id="settingsBeepVolume"
-                     name="beepVolume"
-                     min="0"
-                     max="1"
-                     step="0.05"
-                     aria-describedby="settingsBeepVolumeValue">
-              <span id="settingsBeepVolumeValue" class="range-value">60%</span>
-            </div>
-          </section>
-
           <section class="menu-section" aria-labelledby="settingsBehaviorTitle">
             <p id="settingsBehaviorTitle" class="menu-title">Behavior</p>
             <label class="menu-checkbox" for="settingsAutoStart">
@@ -598,16 +586,6 @@
                      step="1"
                      aria-label="Number of sessions to keep in history">
             </label>
-            <label class="menu-row" for="announceCadence">
-              <span>Timer announcements</span>
-              <select id="announceCadence"
-                      name="announceCadence"
-                      aria-label="Timer announcement cadence">
-                <option value="off">Off</option>
-                <option value="1m">Every minute</option>
-                <option value="5m">Every 5 minutes</option>
-              </select>
-            </label>
           </section>
 
           <section class="menu-section" aria-labelledby="settingsAccessibilityTitle">
@@ -625,16 +603,6 @@
                     class="menu-action"
                     aria-label="Open previous sessions">
               Previous Sessions
-            </button>
-          </section>
-
-          <section class="menu-section" aria-labelledby="settingsAccountTitle">
-            <p id="settingsAccountTitle" class="menu-title">Account</p>
-            <button id="accountBtn"
-                    type="button"
-                    class="menu-action"
-                    aria-label="Account coming soon">
-              Coming Soon
             </button>
           </section>
 

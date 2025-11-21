@@ -1,5 +1,11 @@
 {
+  "scripts": {
+    "snapshots": "node tools/ui-snapshots.js"
+  },
   "dependencies": {
     "tippy.js": "^6.3.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }

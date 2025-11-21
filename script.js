@@ -182,26 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeSettingsModalBtn = document.getElementById('closeSettingsModal');
     const themeSelect = document.getElementById('settingsTheme');
     const pulseGlowToggle = document.getElementById('settingsPulseGlow');
-    const enableBeepToggle = document.getElementById('settingsEnableBeep');
-    const beepVolumeInput = document.getElementById('settingsBeepVolume');
-    const beepVolumeValue = document.getElementById('settingsBeepVolumeValue');
     const autoStartToggle = document.getElementById('settingsAutoStart');
     const confirmResetToggle = document.getElementById('settingsConfirmReset');
     const reduceMotionToggle = document.getElementById('settingsReduceMotion');
     const historySizeInput = document.getElementById('historySizeSelect');
-    const announceCadenceSelect = document.getElementById('announceCadence');
     const openHistoryButton = document.getElementById('openHistory');
-    const accountBtn = document.getElementById('accountBtn');
     const settingsLiveRegion = document.getElementById('settingsStatus');
     const globalLiveRegion = document.getElementById('live');
-    const updateBeepVolumeLabel = () => {
-        if (!beepVolumeInput || !beepVolumeValue) {
-            return;
-        }
-        const raw = parseFloat(beepVolumeInput.value);
-        const percent = Number.isFinite(raw) ? Math.round(raw * 100) : Math.round((appSettings?.beepVolume ?? 0.6) * 100);
-        beepVolumeValue.textContent = `${percent}%`;
-    };
     const appAlerts = document.getElementById('appAlerts');
     const timerLive = document.getElementById('timer-status');
     const sessionHistoryModal = document.getElementById('sessionHistoryModal');
@@ -316,12 +303,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     let resetConfirmPending = false;
     let resetConfirmTimeout;
     let currentElapsedMs = 0;
-    let beepAudioContext = null;
     let lastCadenceMinute = -1;
 
     const LEGACY_SETTINGS_KEYS = Object.freeze({
         historyRetention: 'bt:retention',
-        announceCadence: 'bt:announceCadence',
         theme: 'bt:lastTheme',
         startupTheme: 'bt:startupTheme',
     });
@@ -346,6 +331,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         '1m': 1,
         '5m': 5,
     });
+    const DEFAULT_ANNOUNCEMENT_CADENCE = 'off';
 
     const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
     const clampHistoryRetention = (value) => {
@@ -497,10 +483,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         if (retention !== null) {
             legacy.historyRetention = retention;
         }
-        const cadence = safeStorageGet(LEGACY_SETTINGS_KEYS.announceCadence);
-        if (cadence !== null) {
-            legacy.announceCadence = cadence;
-        }
         const storedTheme = safeStorageGet(LEGACY_SETTINGS_KEYS.theme);
         if (storedTheme) {
             legacy.theme = storedTheme;
@@ -522,7 +504,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     saveSettingsToStore(appSettings, settingsStorageAdapter);
 
     let historyRetention = clampHistoryRetention(appSettings.historyRetention);
-    let announcementCadence = appSettings.announceCadence;
+    let announcementCadence = Object.prototype.hasOwnProperty.call(ANNOUNCEMENT_STEPS, appSettings?.announceCadence)
+        ? appSettings.announceCadence
+        : DEFAULT_ANNOUNCEMENT_CADENCE;
 
     const reduceMotionQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         ? window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -1373,54 +1357,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         return enrichedEntry;
     };
 
-    const clampVolume = (value) => clampNumber(Number.isFinite(value) ? value : appSettings.beepVolume, 0, 1);
-
-    const ensureAudioContext = () => {
-        if (typeof window === 'undefined') {
-            return null;
-        }
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) {
-            return null;
-        }
-        if (!beepAudioContext) {
-            try {
-                beepAudioContext = new AudioCtx();
-            } catch (error) {
-                warn('BuzzTimer: unable to initialise audio context', error);
-                beepAudioContext = null;
-            }
-        }
-        return beepAudioContext;
-    };
-
-    const playBeep = () => {
-        if (!appSettings || !appSettings.enableBeep) {
-            return;
-        }
-        const ctx = ensureAudioContext();
-        if (!ctx) {
-            return;
-        }
-        if (ctx.state === 'suspended') {
-            ctx.resume().catch(() => {});
-        }
-        try {
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-            oscillator.type = 'sine';
-            oscillator.frequency.value = 660;
-            gainNode.gain.value = clampVolume(appSettings.beepVolume) * 0.3;
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            const now = ctx.currentTime;
-            oscillator.start(now);
-            oscillator.stop(now + 0.18);
-        } catch (error) {
-            warn('BuzzTimer: unable to play beep', error);
-        }
-    };
-
     const triggerHaptics = () => {
         if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
             return;
@@ -1433,10 +1369,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     };
 
     const notifyCadenceTick = (minutes) => {
-        if (!appSettings || !appSettings.enableBeep) {
-            return;
-        }
-        playBeep();
         triggerHaptics();
         log(`Cadence notification fired at minute ${minutes}`);
     };
@@ -2710,13 +2642,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         if (pulseGlowToggle) {
             pulseGlowToggle.checked = Boolean(appSettings.enablePulseGlow);
         }
-        if (enableBeepToggle) {
-            enableBeepToggle.checked = Boolean(appSettings.enableBeep);
-        }
-        if (beepVolumeInput) {
-            beepVolumeInput.value = String(clampVolume(appSettings.beepVolume));
-        }
-        updateBeepVolumeLabel();
         if (autoStartToggle) {
             autoStartToggle.checked = Boolean(appSettings.autoStart);
         }
@@ -2729,14 +2654,16 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         if (historySizeInput) {
             historySizeInput.value = String(clampHistoryRetention(appSettings.historyRetention));
         }
-        if (announceCadenceSelect) {
-            announceCadenceSelect.value = appSettings.announceCadence;
-        }
     };
 
     const applySettings = (settings, options = {}) => {
         historyRetention = clampHistoryRetention(settings.historyRetention);
-        announcementCadence = settings.announceCadence;
+        const maybeCadence = settings && typeof settings.announceCadence === 'string'
+            ? settings.announceCadence
+            : null;
+        announcementCadence = Object.prototype.hasOwnProperty.call(ANNOUNCEMENT_STEPS, maybeCadence)
+            ? maybeCadence
+            : DEFAULT_ANNOUNCEMENT_CADENCE;
         syncReduceMotionClass();
 
         if (!options.skipTheme) {
@@ -2751,8 +2678,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
         if (!options.skipFormSync) {
             syncSettingsForm();
-        } else {
-            updateBeepVolumeLabel();
         }
 
         setTimerRunningVisual(timer.isRunning());
@@ -2846,10 +2771,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         });
     }
 
-    if (beepVolumeInput) {
-        beepVolumeInput.addEventListener('input', updateBeepVolumeLabel);
-    }
-
     const openSettings = () => {
         if (!settingsMenu) {
             warn('BuzzTimer: attempted to open settings without modal element.');
@@ -2932,17 +2853,11 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             const nextSettings = {
                 theme: themeSelect ? themeSelect.value : appSettings.theme,
                 enablePulseGlow: pulseGlowToggle ? pulseGlowToggle.checked : appSettings.enablePulseGlow,
-                enableBeep: enableBeepToggle ? enableBeepToggle.checked : appSettings.enableBeep,
-                beepVolume: beepVolumeInput ? parseFloat(beepVolumeInput.value) : appSettings.beepVolume,
                 autoStart: autoStartToggle ? autoStartToggle.checked : appSettings.autoStart,
                 confirmReset: confirmResetToggle ? confirmResetToggle.checked : appSettings.confirmReset,
                 reduceMotionRespect: reduceMotionToggle ? reduceMotionToggle.checked : appSettings.reduceMotionRespect,
-                announceCadence: announceCadenceSelect ? announceCadenceSelect.value : appSettings.announceCadence,
             };
 
-            if (!Number.isFinite(nextSettings.beepVolume)) {
-                nextSettings.beepVolume = appSettings.beepVolume;
-            }
             nextSettings.historyRetention = clampHistoryRetention(
                 Number.isFinite(requestedRetention) ? requestedRetention : appSettings.historyRetention
             );
