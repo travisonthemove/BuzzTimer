@@ -168,6 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareFacebook = document.getElementById('shareFacebook');
     const copyLink = document.getElementById('copyLink');
     const shareFeedback = document.getElementById('shareFeedback');
+    const shareTitle = 'BuzzTimer';
+    const defaultShareText = 'Check out BuzzTimer!';
+    const shareUrl = 'https://travisonthemove.github.io/BuzzTimer/';
     const logsShareButton = document.getElementById('logsShareButton');
     const timerContainer = document.getElementById('timerContainer');
     const timerDisplay = document.getElementById('timer');
@@ -3098,10 +3101,29 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     }
 
     if (shareBtn) {
-        shareBtn.addEventListener('click', (event) => {
+        shareBtn.addEventListener('click', async (event) => {
             event.preventDefault();
             log('Share button clicked!');
-            openShareModal(event.currentTarget);
+            updateSharePreview();
+            const previewText = sharePreview?.textContent?.trim();
+            const shareText = previewText || defaultShareText;
+            const canUseWebShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+            if (canUseWebShare) {
+                try {
+                    await navigator.share({
+                        title: shareTitle,
+                        text: shareText,
+                        url: shareUrl,
+                    });
+                    return;
+                } catch (shareError) {
+                    warn('Share API failed, falling back to direct link.', shareError);
+                    if (shareError && shareError.name === 'AbortError') {
+                        return;
+                    }
+                }
+            }
+            window.open(shareUrl, '_blank');
         });
     }
 
@@ -3196,7 +3218,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             sharePreview.textContent = `
                 ${customMessage}
                 Theme: ${friendlyTheme}
-                Learn more at BuzzTimer.com
+                Learn more at ${shareUrl}
             `.trim();
         } else {
             const logItems = logList ? Array.from(logList.children) : [];
@@ -3210,7 +3232,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 Theme: ${friendlyTheme}
                 Strain: ${strainInfo}
                 Logged Moments:\n${loggedMoments}
-                Learn more at BuzzTimer.com
+                Learn more at ${shareUrl}
             `.trim();
         }
     };
