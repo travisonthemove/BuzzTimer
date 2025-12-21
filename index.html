@@ -268,45 +268,50 @@
       </div>
     </div>
 
-    <div id="sessionDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sdmTitle">
-      <div class="modal-content">
-        <button class="modal-close modal__close" type="button" aria-label="Close">&times;</button>
-        <h2 id="sdmTitle">Session Details</h2>
+    <section id="sessionToolsDrawer" class="inline-drawer hidden" aria-hidden="true" aria-labelledby="sessionToolsTitle" tabindex="-1">
+      <div class="inline-drawer__header">
+        <h2 id="sessionToolsTitle">Session Tools</h2>
+        <button id="sessionToolsClose" type="button" class="inline-drawer__close" aria-label="Close session tools">&times;</button>
+      </div>
+      <div class="inline-drawer__content">
+        <div class="inline-drawer__section">
+          <h3 class="inline-drawer__section-title">Session Details</h3>
 
-        <div class="form-group">
-          <label for="sdmProductName">Product Name</label>
-          <input id="sdmProductName" type="text" placeholder="e.g., Blue Dream">
-        </div>
+          <div class="form-group">
+            <label for="sdmProductName">Product Name</label>
+            <input id="sdmProductName" type="text" placeholder="e.g., Blue Dream">
+          </div>
 
-        <div class="form-group">
-          <label for="sdmMethod">Consumption Method</label>
-          <select id="sdmMethod">
-            <option value="" selected>Select...</option>
-            <option value="Flower">Flower</option>
-            <option value="Vape">Vape</option>
-            <option value="Edible">Edible</option>
-            <option value="Concentrate">Concentrate</option>
-            <option value="Tincture">Tincture</option>
-            <option value="Topical">Topical</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="sdmDose">Dose</label>
-          <div class="dose-wrapper">
-            <input id="sdmDose" type="number" min="0" step="0.1" inputmode="decimal">
-            <select id="sdmUnit">
-              <option value="mg" selected>mg</option>
-              <option value="g">g</option>
-              <option value="ml">ml</option>
-              <option value="puffs">puffs</option>
+          <div class="form-group">
+            <label for="sdmMethod">Consumption Method</label>
+            <select id="sdmMethod">
+              <option value="" selected>Select...</option>
+              <option value="Flower">Flower</option>
+              <option value="Vape">Vape</option>
+              <option value="Edible">Edible</option>
+              <option value="Concentrate">Concentrate</option>
+              <option value="Tincture">Tincture</option>
+              <option value="Topical">Topical</option>
             </select>
           </div>
-        </div>
 
-        <div class="modal__actions">
-          <button id="sdmSave" type="button" class="btn primary">Save</button>
-          <button id="sdmCancel" type="button" class="btn secondary">Cancel</button>
+          <div class="form-group">
+            <label for="sdmDose">Dose</label>
+            <div class="dose-wrapper">
+              <input id="sdmDose" type="number" min="0" step="0.1" inputmode="decimal">
+              <select id="sdmUnit">
+                <option value="mg" selected>mg</option>
+                <option value="g">g</option>
+                <option value="ml">ml</option>
+                <option value="puffs">puffs</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal__actions drawer-actions">
+            <button id="sdmSave" type="button" class="btn primary">Save</button>
+            <button id="sdmCancel" type="button" class="btn secondary">Cancel</button>
+          </div>
         </div>
 
         <section id="addDoseSection" class="add-dose-section hidden" aria-label="Add dose">
@@ -365,49 +370,96 @@
           </div>
         </section>
 
-        <div class="modal-secondary-actions modal__actions">
+        <div class="modal-secondary-actions modal__actions drawer-secondary-actions">
           <button id="sdmAddDose" type="button" class="btn secondary">Add Dose</button>
           <button id="sdmHistory" type="button" class="btn secondary">Session History</button>
           <button id="sdmShare" type="button" class="btn secondary">Share</button>
         </div>
       </div>
+    </section>
+
+    <div id="sessionDetailsBackdrop" class="modal-backdrop focus-modal-scrim hidden" aria-hidden="true"></div>
+    <div id="sessionDetailsModal" class="modal focus-modal hidden" role="dialog" aria-modal="true" aria-labelledby="sdmTitle">
+      <div class="modal-content focus-modal-panel">
+        <button class="modal-close modal__close" type="button" aria-label="Close">&times;</button>
+        <h2 id="sdmTitle">Session Details</h2>
+
+        <div class="form-group">
+          <label for="sessionStartProductName">Product Name</label>
+          <input id="sessionStartProductName" type="text" placeholder="e.g., Blue Dream">
+        </div>
+
+        <div class="form-group">
+          <label for="sessionStartMethod">Consumption Method</label>
+          <select id="sessionStartMethod">
+            <option value="" selected>Select...</option>
+            <option value="Flower">Flower</option>
+            <option value="Vape">Vape</option>
+            <option value="Edible">Edible</option>
+            <option value="Concentrate">Concentrate</option>
+            <option value="Tincture">Tincture</option>
+            <option value="Topical">Topical</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="sessionStartDose">Dose</label>
+          <div class="dose-wrapper">
+            <input id="sessionStartDose" type="number" min="0" step="0.1" inputmode="decimal">
+            <select id="sessionStartUnit">
+              <option value="mg" selected>mg</option>
+              <option value="g">g</option>
+              <option value="ml">ml</option>
+              <option value="puffs">puffs</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button id="sessionStartSave" type="button" class="btn primary">Save</button>
+          <button id="sessionStartCancel" type="button" class="btn secondary">Cancel</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Log Moment Modal -->
-    <div id="logBackdrop" class="modal-backdrop backdrop hidden" aria-hidden="true"></div>
-    <div id="logModal" class="modal modal--moment hidden" role="dialog" aria-modal="true" aria-labelledby="moment-title">
-      <button type="button" class="modal-close modal__close" aria-label="Close">&times;</button>
-      <h2 id="moment-title" tabindex="-1">Log Moment</h2>
-      <form id="moment-form" novalidate>
-        <label for="moment-effect">Enter or select an effect</label>
-        <input id="moment-effect"
-               type="text"
-               name="momentEffect"
-               list="moment-presets"
-               autocomplete="off"
-               placeholder="Custom moment or select...">
-        <datalist id="moment-presets">
-          <option value="Mellow Relaxation"></option>
-          <option value="Euphoric Giddiness"></option>
-          <option value="Creative Spark"></option>
-          <option value="Heightened Focus"></option>
-          <option value="Mindful Reflection"></option>
-          <option value="Sensory Boost"></option>
-          <option value="Cozy Couch-Lock"></option>
-          <option value="Uplifting Energy"></option>
-          <option value="Taste Explorer (Munchies)"></option>
-          <option value="Tranquil Sleepiness"></option>
-          <option value="Nervous Heart Palpitations"></option>
-          <option value="Waves of Panic"></option>
-          <option value="Paranoid Thoughts"></option>
-          <option value="Indescribable Sparkly Stillness"></option>
-        </datalist>
-        <div class="modal__actions">
-          <button type="button" class="btn secondary" id="moment-cancel">Cancel</button>
-          <button type="submit" class="btn primary">Save moment</button>
-        </div>
-      </form>
-    </div>
+    <!-- Log Moment Drawer -->
+    <section id="logDrawer" class="inline-drawer hidden" aria-hidden="true" aria-labelledby="moment-title" tabindex="-1">
+      <div class="inline-drawer__header">
+        <h2 id="moment-title">Log Moment</h2>
+        <button type="button" class="inline-drawer__close" id="logDrawerClose" aria-label="Close Log Moment drawer">&times;</button>
+      </div>
+      <div class="inline-drawer__content">
+        <form id="moment-form" novalidate>
+          <label for="moment-effect">Enter or select an effect</label>
+          <input id="moment-effect"
+                 type="text"
+                 name="momentEffect"
+                 list="moment-presets"
+                 autocomplete="off"
+                 placeholder="Custom moment or select...">
+          <datalist id="moment-presets">
+            <option value="Mellow Relaxation"></option>
+            <option value="Euphoric Giddiness"></option>
+            <option value="Creative Spark"></option>
+            <option value="Heightened Focus"></option>
+            <option value="Mindful Reflection"></option>
+            <option value="Sensory Boost"></option>
+            <option value="Cozy Couch-Lock"></option>
+            <option value="Uplifting Energy"></option>
+            <option value="Taste Explorer (Munchies)"></option>
+            <option value="Tranquil Sleepiness"></option>
+            <option value="Nervous Heart Palpitations"></option>
+            <option value="Waves of Panic"></option>
+            <option value="Paranoid Thoughts"></option>
+            <option value="Indescribable Sparkly Stillness"></option>
+          </datalist>
+          <div class="modal__actions drawer-actions">
+            <button type="button" class="btn secondary" id="moment-cancel">Cancel</button>
+            <button type="submit" class="btn primary">Save moment</button>
+          </div>
+        </form>
+      </div>
+    </section>
 
     <section aria-labelledby="log-h" class="logs hidden">
       <h2 id="log-h">Logged Moments</h2>
@@ -418,31 +470,36 @@
       </div>
     </section>
 
-    <!-- High Idea Modal -->
-    <div id="highIdeaBackdrop" class="modal-backdrop backdrop hidden" aria-hidden="true"></div>
-    <div id="highIdeaModal" class="modal modal--idea hidden" role="dialog" aria-modal="true" aria-labelledby="idea-title">
-      <button type="button" class="modal-close modal__close" aria-label="Close">&times;</button>
-      <h2 id="idea-title" tabindex="-1">Document Your High Idea</h2>
-      <form id="idea-form" novalidate>
-        <label for="idea-text">Enter your idea</label>
-        <textarea id="idea-text" name="ideaText" rows="4" placeholder="Type your idea..." autocomplete="off"></textarea>
-        <div class="modal__actions">
-          <button type="button" class="btn secondary" id="idea-cancel">Cancel</button>
-          <button type="submit" class="btn primary">Save idea</button>
-        </div>
-      </form>
-      <div class="formatting" role="group" aria-label="Formatting options">
-        <button type="button" class="formatting-btn" data-format="bold" aria-label="Bold">B</button>
-        <button type="button" class="formatting-btn" data-format="italic" aria-label="Italic">I</button>
-        <button type="button" class="formatting-btn" data-format="underline" aria-label="Underline">U</button>
+    <!-- High Idea Drawer -->
+    <section id="highIdeaDrawer" class="inline-drawer hidden" aria-hidden="true" aria-labelledby="idea-title" tabindex="-1">
+      <div class="inline-drawer__header">
+        <h2 id="idea-title">Document Your High Idea</h2>
+        <button type="button" class="inline-drawer__close" id="highIdeaDrawerClose" aria-label="Close High Idea drawer">&times;</button>
       </div>
-    </div>
+      <div class="inline-drawer__content">
+        <form id="idea-form" novalidate>
+          <label for="idea-text">Enter your idea</label>
+          <textarea id="idea-text" name="ideaText" rows="4" placeholder="Type your idea..." autocomplete="off"></textarea>
+          <div class="modal__actions drawer-actions">
+            <button type="button" class="btn secondary" id="idea-cancel">Cancel</button>
+            <button type="submit" class="btn primary">Save idea</button>
+          </div>
+        </form>
+        <div class="formatting" role="group" aria-label="Formatting options">
+          <button type="button" class="formatting-btn" data-format="bold" aria-label="Bold">B</button>
+          <button type="button" class="formatting-btn" data-format="italic" aria-label="Italic">I</button>
+          <button type="button" class="formatting-btn" data-format="underline" aria-label="Underline">U</button>
+        </div>
+      </div>
+    </section>
 
-    <!-- Entertainment Modal -->
-    <div id="entertainmentModal" class="modal entertainment-modal hidden" role="dialog" aria-modal="true" aria-labelledby="entertainmentModalTitle">
-      <div class="modal-content">
-        <button type="button" class="modal-close modal__close" aria-label="Close">&times;</button>
-        <h2 id="entertainmentModalTitle">Entertainment Zone</h2>
+    <!-- Entertainment Drawer -->
+    <section id="entertainmentDrawer" class="inline-drawer hidden" aria-hidden="true" aria-labelledby="entertainmentDrawerTitle" tabindex="-1">
+      <div class="inline-drawer__header">
+        <h2 id="entertainmentDrawerTitle">Entertainment Zone</h2>
+        <button type="button" class="inline-drawer__close" id="entertainmentDrawerClose" aria-label="Close Entertainment drawer">&times;</button>
+      </div>
+      <div class="inline-drawer__content">
         <div class="entertainment-links">
           <a href="https://highdeas.com/" target="_blank" class="entertainment-link">
             <h4>HighDeas</h4>
@@ -461,7 +518,7 @@
           Dismiss Entertainment Zone
         </button>
       </div>
-    </div>
+    </section>
 
     <!-- Session History Modal -->
     <div id="sessionHistoryBackdrop" class="modal-backdrop backdrop hidden" aria-hidden="true"></div>

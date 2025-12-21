@@ -121,6 +121,56 @@ body {
     z-index: 1000;
 }
 
+.focus-modal {
+    padding: clamp(1.5rem, 3vh, 2.5rem) clamp(1rem, 4vw, 2rem);
+}
+
+.focus-modal-scrim {
+    background: rgba(2, 4, 10, 0.72);
+    backdrop-filter: blur(8px) saturate(1.2);
+}
+
+.focus-modal-panel {
+    position: relative;
+    width: min(560px, 94vw);
+    max-height: calc(100dvh - 4rem);
+    overflow-y: auto;
+    padding: clamp(1.25rem, 3vw, 2rem) clamp(1rem, 4vw, 2rem) clamp(1.25rem, 3vw, 2rem);
+    background: rgba(8, 10, 18, 0.98);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65);
+}
+
+body.light-mode .focus-modal-panel {
+    background: rgba(255, 255, 255, 0.99);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.25);
+}
+
+.focus-modal-panel .modal__actions,
+.focus-modal-panel .modal-secondary-actions {
+    justify-content: flex-end;
+}
+
+#app.focus-modal-session .app-content {
+    filter: blur(1px) saturate(0.5);
+    transition: filter 200ms ease;
+}
+
+#app.focus-modal-session .timer-container {
+    opacity: 0.35;
+    filter: blur(1.5px);
+}
+
+#app.focus-modal-session .timer-container--running {
+    animation-play-state: paused;
+}
+
+#app.focus-modal-session .timer-display {
+    opacity: 0.6;
+}
+
 .modal {
     position: fixed;
     inset: 0;
@@ -626,6 +676,88 @@ button .icon {
     flex: 1;
 }
 
+.inline-drawer {
+    position: relative;
+    max-width: 720px;
+    margin: 1rem auto 0;
+    background: var(--bt-surface-panel);
+    border-radius: 24px 24px 12px 12px;
+    border: 1px solid var(--bt-divider-subtle);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+    transform: translateY(1rem);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 280ms ease, opacity 280ms ease;
+}
+
+.inline-drawer--open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.inline-drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem 0.25rem;
+}
+
+.inline-drawer__close {
+    border: none;
+    background: transparent;
+    color: var(--bt-text-primary);
+    font-size: 1.75rem;
+    line-height: 1;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    cursor: pointer;
+}
+
+.inline-drawer__close:focus-visible {
+    outline: 3px solid var(--button-bg);
+    outline-offset: 2px;
+}
+
+.inline-drawer__content {
+    padding: 0 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.inline-drawer__section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.inline-drawer__section-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.drawer-actions,
+.drawer-secondary-actions {
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.drawer-secondary-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.inline-drawer.hidden {
+    display: none !important;
+}
+
+.inline-drawer-active #sessionDetails {
+    display: none !important;
+}
+
 .session-dose-summary {
     margin: 0.5rem 0;
     font-size: 0.95rem;
@@ -743,7 +875,7 @@ button .icon {
     gap: 0.75rem;
 }
 
-#sessionDetailsModal.session-details-readonly :is(#sdmProductName, #sdmMethod, #sdmDose, #sdmUnit) {
+#sessionToolsDrawer.session-details-readonly :is(#sdmProductName, #sdmMethod, #sdmDose, #sdmUnit) {
     opacity: 0.65;
     cursor: not-allowed;
 }

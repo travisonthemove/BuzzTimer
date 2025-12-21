@@ -112,6 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const editSessionDetailsBtn = document.getElementById('editSessionDetailsBtn');
     const sessionBtn = document.getElementById('sessionBtn');
     const sessionDetailsModal = document.getElementById('sessionDetailsModal');
+    const sessionDetailsBackdrop = document.getElementById('sessionDetailsBackdrop');
+    const sessionStartProductName = document.getElementById('sessionStartProductName');
+    const sessionStartMethod = document.getElementById('sessionStartMethod');
+    const sessionStartDose = document.getElementById('sessionStartDose');
+    const sessionStartUnit = document.getElementById('sessionStartUnit');
+    const sessionStartSaveBtn = document.getElementById('sessionStartSave');
+    const sessionStartCancelBtn = document.getElementById('sessionStartCancel');
     const sdmProductName = document.getElementById('sdmProductName');
     const sdmMethod = document.getElementById('sdmMethod');
     const sdmDose = document.getElementById('sdmDose');
@@ -130,6 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const addDoseCancelBtn = document.getElementById('addDoseCancelBtn');
     const sdmHistoryBtn = document.getElementById('sdmHistory');
     const sdmShareBtn = document.getElementById('sdmShare');
+    const sessionToolsDrawer = document.getElementById('sessionToolsDrawer');
+    const sessionToolsCloseBtn = document.getElementById('sessionToolsClose');
     const startBtn = document.getElementById('startBtn');
     const resetBtn = document.getElementById('resetBtn');
     const themeContainer = document.querySelector('.theme-container');
@@ -139,8 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const skinOptions = Array.from(document.querySelectorAll('.skin-option'));
     const themeToggle = document.getElementById('themeToggle');
     const logBtn = document.getElementById('logBtn');
-    const logModal = document.getElementById('logModal');
-    const logBackdrop = document.getElementById('logBackdrop');
+    const logDrawer = document.getElementById('logDrawer');
+    const logDrawerCloseBtn = document.getElementById('logDrawerClose');
     const momentForm = document.getElementById('moment-form');
     const momentEffectInput = document.getElementById('moment-effect');
     const momentCancelBtn = document.getElementById('moment-cancel');
@@ -148,13 +157,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const logsSection = document.querySelector('.logs');
     const logLiveRegion = document.getElementById('log-live');
     const highIdeaBtn = document.getElementById('highIdeaBtn');
-    const highIdeaBackdrop = document.getElementById('highIdeaBackdrop');
-    const highIdeaModal = document.getElementById('highIdeaModal');
+    const highIdeaDrawer = document.getElementById('highIdeaDrawer');
+    const highIdeaDrawerCloseBtn = document.getElementById('highIdeaDrawerClose');
     const ideaForm = document.getElementById('idea-form');
     const ideaTextarea = document.getElementById('idea-text');
     const ideaCancelBtn = document.getElementById('idea-cancel');
     const ideaFormattingButtons = Array.from(document.querySelectorAll('.formatting-btn'));
-    const entertainmentModal = document.getElementById('entertainmentModal');
+    const entertainmentDrawer = document.getElementById('entertainmentDrawer');
+    const entertainmentDrawerCloseBtn = document.getElementById('entertainmentDrawerClose');
     const dismissEntertainment = document.getElementById('dismissEntertainment');
     const distractMeBtn = document.getElementById('distractMeBtn');
     const shareModalBackdrop = document.getElementById('shareModalBackdrop');
@@ -205,6 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const appContent = document.querySelector('.app-content') || document.querySelector('main');
     const openModals = new Map();
     let modalRoot = null;
+    const SESSION_FOCUS_CLASS = 'focus-modal-session';
+    const INLINE_DRAWER_ACTIVE_CLASS = 'inline-drawer-active';
+    let sessionToolsTriggerEl = null;
 
     const ensureModalRoot = () => {
         if (modalRoot && document.body.contains(modalRoot)) {
@@ -1918,7 +1931,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         clearAppAlert();
         resetAddDoseForm();
         hideAddDoseSection();
-        closeSessionDetailsModal();
     };
 
     const attachBannerTrigger = () => {
@@ -1983,6 +1995,25 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         renderSessionBanner(sessionDetailsSaved, { animate: animateBanner && sessionDetailsSaved });
     };
 
+    const prefillSessionStartFields = () => {
+        const source = getActiveSession() || getLastSession();
+        const sourceDose = source && typeof source.dose === 'object' ? source.dose : null;
+        if (sessionStartProductName) {
+            sessionStartProductName.value = source?.productName || '';
+        }
+        if (sessionStartMethod) {
+            sessionStartMethod.value = source?.method || '';
+        }
+        if (sessionStartDose) {
+            const doseAmount = sourceDose?.amount ?? source?.doseAmount;
+            const normalizedAmount = typeof doseAmount === 'string' ? parseFloat(doseAmount) : doseAmount;
+            sessionStartDose.value = Number.isFinite(normalizedAmount) ? String(normalizedAmount) : '';
+        }
+        if (sessionStartUnit) {
+            sessionStartUnit.value = sourceDose?.unit || source?.doseUnit || 'mg';
+        }
+    };
+
     const prefillSessionDetailsFields = () => {
         const source = getActiveSession() || getLastSession();
         const sourceDose = source && typeof source.dose === 'object' ? source.dose : null;
@@ -2002,32 +2033,90 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
     };
 
+    const activateSessionDetailsFocusState = () => {
+        if (appRoot) {
+            appRoot.classList.add(SESSION_FOCUS_CLASS);
+        }
+    };
+
+    const deactivateSessionDetailsFocusState = () => {
+        if (appRoot) {
+            appRoot.classList.remove(SESSION_FOCUS_CLASS);
+        }
+    };
+
     const openSessionDetailsModal = (triggerEl) => {
         if (!sessionDetailsModal) {
             return;
         }
+        if (sessionDetailsSaved) {
+            openSessionToolsDrawer(triggerEl);
+            return;
+        }
         sessionDetailsTriggerEl = triggerEl || document.activeElement || null;
-        hideAddDoseSection();
-        resetAddDoseForm();
-        prefillSessionDetailsFields();
-        const shouldStartInEditMode = openSessionDetailsInEditMode;
-        openSessionDetailsInEditMode = false;
-        setSessionDetailsEditMode(shouldStartInEditMode);
+        prefillSessionStartFields();
         openModal('sessionDetails', sessionDetailsTriggerEl);
         log('Session details modal opened');
     };
 
     const closeSessionDetailsModal = () => {
         closeModal('sessionDetails');
-        hideAddDoseSection();
-        resetAddDoseForm();
-        sessionDetailsTriggerEl = null;
         log('Session details modal closed');
     };
 
-    const expandSessionDetails = (event) => {
-        const trigger = event?.currentTarget || event || sessionBtn || startBtn;
-        openSessionDetailsModal(trigger);
+    const openSessionToolsDrawer = (triggerEl) => {
+        if (!sessionToolsDrawer) {
+            return;
+        }
+        if (activeInlineDrawerKey) {
+            closeInlineDrawer(activeInlineDrawerKey);
+        }
+        if (!sessionDetailsSaved) {
+            openSessionDetailsModal(triggerEl);
+            return;
+        }
+        sessionToolsTriggerEl = triggerEl || document.activeElement || null;
+        prefillSessionDetailsFields();
+        setSessionDetailsEditMode(false);
+        hideAddDoseSection();
+        resetAddDoseForm();
+        sessionToolsDrawer.classList.remove('hidden');
+        sessionToolsDrawer.setAttribute('aria-hidden', 'false');
+        syncInlineDrawerStateClass();
+        requestAnimationFrame(() => {
+            sessionToolsDrawer.classList.add('inline-drawer--open');
+            focusElementSafe(sessionToolsDrawer);
+        });
+    };
+
+    const closeSessionToolsDrawer = () => {
+        if (!sessionToolsDrawer) {
+            return;
+        }
+        if (sessionToolsDrawer.classList.contains('hidden')) {
+            sessionToolsTriggerEl = null;
+            sessionToolsDrawer.setAttribute('aria-hidden', 'true');
+            syncInlineDrawerStateClass();
+            return;
+        }
+        sessionToolsDrawer.classList.remove('inline-drawer--open');
+        let finalizeCalled = false;
+        const finalizeClose = () => {
+            if (finalizeCalled) {
+                return;
+            }
+            finalizeCalled = true;
+            sessionToolsDrawer.classList.add('hidden');
+            sessionToolsDrawer.removeEventListener('transitionend', finalizeClose);
+            if (sessionToolsTriggerEl && typeof sessionToolsTriggerEl.focus === 'function') {
+                sessionToolsTriggerEl.focus();
+            }
+            sessionToolsTriggerEl = null;
+        };
+        sessionToolsDrawer.addEventListener('transitionend', finalizeClose, { once: true });
+        setTimeout(finalizeClose, 360);
+        sessionToolsDrawer.setAttribute('aria-hidden', 'true');
+        syncInlineDrawerStateClass();
     };
 
     const focusElementSafe = (element) => {
@@ -2047,7 +2136,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     };
 
     let isSessionDetailsEditMode = false;
-    let openSessionDetailsInEditMode = false;
 
     const baselineFields = [
         sdmProductName,
@@ -2066,8 +2154,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 field.removeAttribute('aria-disabled');
             }
         });
-        if (sessionDetailsModal) {
-            sessionDetailsModal.classList.toggle('session-details-readonly', !isSessionDetailsEditMode);
+        if (sessionToolsDrawer) {
+            sessionToolsDrawer.classList.toggle('session-details-readonly', !isSessionDetailsEditMode);
         }
         if (sdmSaveBtn) {
             sdmSaveBtn.textContent = isSessionDetailsEditMode ? 'Save' : 'Edit';
@@ -2076,37 +2164,181 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     setSessionDetailsEditMode(false);
 
-    const handleSessionDetailsSave = () => {
-        if (!sdmProductName || !sdmMethod) {
-            return;
-        }
-        if (!isSessionDetailsEditMode) {
-            setSessionDetailsEditMode(true);
-            focusElementSafe(sdmProductName);
-            return;
-        }
-        const productName = sdmProductName.value.trim();
-        const method = sdmMethod.value.trim();
-        const rawDose = sdmDose ? sdmDose.value.trim() : '';
-        const hasDoseValue = rawDose.length > 0;
-        const doseAmount = hasDoseValue ? parseFloat(rawDose) : null;
-        const doseUnit = sdmUnit && sdmUnit.value ? sdmUnit.value : 'mg';
+    const inlineDrawerConfigs = new Map();
+    let activeInlineDrawerKey = null;
+    const isSessionToolsDrawerOpen = () => sessionToolsDrawer && sessionToolsDrawer.classList.contains('inline-drawer--open');
 
-        if (!productName) {
-            announceSessionValidation('Please enter a product name.', sdmProductName);
+    const syncInlineDrawerStateClass = () => {
+        if (!appRoot) {
             return;
+        }
+        const hasActiveDrawer = Boolean(activeInlineDrawerKey) || isSessionToolsDrawerOpen();
+        if (hasActiveDrawer) {
+            appRoot.classList.add(INLINE_DRAWER_ACTIVE_CLASS);
+            if (sessionDetails) {
+                sessionDetails.setAttribute('aria-hidden', 'true');
+            }
+        } else {
+            appRoot.classList.remove(INLINE_DRAWER_ACTIVE_CLASS);
+            if (sessionDetails) {
+                sessionDetails.removeAttribute('aria-hidden');
+            }
+        }
+    };
+
+    const getInlineDrawerConfig = (key) => inlineDrawerConfigs.get(key);
+
+    const registerInlineDrawer = (key, config) => {
+        if (!key || !config || inlineDrawerConfigs.has(key)) {
+            inlineDrawerConfigs.set(key, { ...(inlineDrawerConfigs.get(key) || {}), ...config });
+            return;
+        }
+        inlineDrawerConfigs.set(key, { ...config });
+    };
+
+    const openInlineDrawer = (key, trigger) => {
+        const config = getInlineDrawerConfig(key);
+        if (!config || !config.drawer) {
+            return;
+        }
+        if (activeInlineDrawerKey && activeInlineDrawerKey !== key) {
+            closeInlineDrawer(activeInlineDrawerKey);
+        }
+        if (isSessionToolsDrawerOpen()) {
+            closeSessionToolsDrawer();
+        }
+        config.trigger = trigger || config.trigger || null;
+        const { drawer, onOpen, focusTarget } = config;
+        drawer.classList.remove('hidden');
+        drawer.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+            drawer.classList.add('inline-drawer--open');
+            if (typeof onOpen === 'function') {
+                onOpen();
+            }
+            const target = typeof focusTarget === 'function' ? focusTarget() : null;
+            if (target) {
+                focusElementSafe(target);
+            } else {
+                focusElementSafe(drawer);
+            }
+        });
+        activeInlineDrawerKey = key;
+        syncInlineDrawerStateClass();
+    };
+
+    const closeInlineDrawer = (key) => {
+        const config = getInlineDrawerConfig(key);
+        if (!config || !config.drawer) {
+            return;
+        }
+        const { drawer, onClose, trigger } = config;
+        const finalizeClose = () => {
+            drawer.classList.add('hidden');
+            drawer.removeEventListener('transitionend', finalizeClose);
+            if (trigger && typeof trigger.focus === 'function') {
+                trigger.focus();
+            }
+            config.trigger = null;
+            if (activeInlineDrawerKey === key) {
+                activeInlineDrawerKey = null;
+            }
+            syncInlineDrawerStateClass();
+        };
+        if (!drawer.classList.contains('inline-drawer--open')) {
+            finalizeClose();
+            drawer.setAttribute('aria-hidden', 'true');
+            return;
+        }
+        drawer.classList.remove('inline-drawer--open');
+        drawer.addEventListener('transitionend', finalizeClose, { once: true });
+        setTimeout(finalizeClose, 360);
+        drawer.setAttribute('aria-hidden', 'true');
+        if (typeof onClose === 'function') {
+            onClose();
+        }
+    };
+
+    document.addEventListener('pointerdown', (event) => {
+        if (!activeInlineDrawerKey) {
+            return;
+        }
+        const activeConfig = getInlineDrawerConfig(activeInlineDrawerKey);
+        if (!activeConfig?.drawer) {
+            return;
+        }
+        if (activeConfig.drawer.contains(event.target)) {
+            return;
+        }
+        closeInlineDrawer(activeInlineDrawerKey);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' || !activeInlineDrawerKey) {
+            return;
+        }
+        closeInlineDrawer(activeInlineDrawerKey);
+    });
+
+    if (logDrawer) {
+        registerInlineDrawer('log', {
+            drawer: logDrawer,
+            focusTarget: () => momentEffectInput || logDrawer.querySelector('input'),
+            onOpen: () => {
+                clearAppAlert();
+                if (momentEffectInput) {
+                    momentEffectInput.value = '';
+                }
+            },
+            onClose: () => {
+                if (momentEffectInput) {
+                    momentEffectInput.value = '';
+                }
+            },
+        });
+    }
+
+    if (highIdeaDrawer) {
+        registerInlineDrawer('highIdea', {
+            drawer: highIdeaDrawer,
+            focusTarget: () => ideaTextarea || highIdeaDrawer.querySelector('textarea'),
+            onOpen: () => {
+                clearAppAlert();
+                if (ideaTextarea) {
+                    ideaTextarea.value = '';
+                }
+            },
+        });
+    }
+
+    if (entertainmentDrawer) {
+        registerInlineDrawer('entertainment', {
+            drawer: entertainmentDrawer,
+            focusTarget: () => entertainmentDrawer.querySelector('.entertainment-link') || dismissEntertainment || entertainmentDrawer,
+            onOpen: () => clearAppAlert(),
+        });
+    }
+
+    const validateSessionForm = ({ productName, method, hasDoseValue, doseAmount, productInput, methodInput, doseInput }) => {
+        if (!productName) {
+            announceSessionValidation('Please enter a product name.', productInput);
+            return false;
         }
         if (!method) {
-            announceSessionValidation('Please select a consumption method.', sdmMethod);
-            return;
+            announceSessionValidation('Please select a consumption method.', methodInput);
+            return false;
         }
         if (hasDoseValue && (!Number.isFinite(doseAmount) || doseAmount < 0)) {
-            announceSessionValidation('Dose must be zero or higher.', sdmDose);
-            return;
+            announceSessionValidation('Dose must be zero or higher.', doseInput);
+            return false;
         }
+        return true;
+    };
 
+    const persistSessionDetails = ({ productName, method, doseAmount = null, doseUnit = 'mg' }) => {
         const nowIso = new Date().toISOString();
         const existing = getActiveSession() || {};
+        const hasDoseValue = Number.isFinite(doseAmount);
         const active = {
             ...existing,
             productName,
@@ -2153,10 +2385,72 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         sessionDetailsSaved = true;
         syncSessionDetailsUI({ animateBanner: true });
         clearAppAlert();
-        closeSessionDetailsModal();
-        log('Session details saved');
+        return active;
+    };
 
-        if (appSettings.autoStart && !timer.isRunning()) {
+    const handleSessionDetailsSave = () => {
+        if (!sdmProductName || !sdmMethod) {
+            return;
+        }
+        if (!isSessionDetailsEditMode) {
+            setSessionDetailsEditMode(true);
+            focusElementSafe(sdmProductName);
+            return;
+        }
+        const productName = sdmProductName.value.trim();
+        const method = sdmMethod.value.trim();
+        const rawDose = sdmDose ? sdmDose.value.trim() : '';
+        const hasDoseValue = rawDose.length > 0;
+        const doseAmount = hasDoseValue ? parseFloat(rawDose) : null;
+        const doseUnit = sdmUnit && sdmUnit.value ? sdmUnit.value : 'mg';
+
+        const isValid = validateSessionForm({
+            productName,
+            method,
+            hasDoseValue,
+            doseAmount,
+            productInput: sdmProductName,
+            methodInput: sdmMethod,
+            doseInput: sdmDose,
+        });
+        if (!isValid) {
+            return;
+        }
+
+        persistSessionDetails({ productName, method, doseAmount, doseUnit });
+        setSessionDetailsEditMode(false);
+        closeSessionToolsDrawer();
+        log('Session details updated');
+    };
+
+    const handleSessionStartSave = () => {
+        if (!sessionStartProductName || !sessionStartMethod) {
+            return;
+        }
+        const productName = sessionStartProductName.value.trim();
+        const method = sessionStartMethod.value.trim();
+        const rawDose = sessionStartDose ? sessionStartDose.value.trim() : '';
+        const hasDoseValue = rawDose.length > 0;
+        const doseAmount = hasDoseValue ? parseFloat(rawDose) : null;
+        const doseUnit = sessionStartUnit && sessionStartUnit.value ? sessionStartUnit.value : 'mg';
+
+        const isValid = validateSessionForm({
+            productName,
+            method,
+            hasDoseValue,
+            doseAmount,
+            productInput: sessionStartProductName,
+            methodInput: sessionStartMethod,
+            doseInput: sessionStartDose,
+        });
+        if (!isValid) {
+            return;
+        }
+
+        persistSessionDetails({ productName, method, doseAmount, doseUnit });
+        closeSessionDetailsModal();
+        log('Session started with saved details');
+        if (!timer.isRunning()) {
             startTimer();
         }
     };
@@ -2172,6 +2466,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         }
         setActiveSession(null);
         sessionDetailsSaved = false;
+        closeSessionToolsDrawer();
         hideAddDoseSection();
         resetAddDoseForm();
         if (sessionDoseSummary) {
@@ -2183,6 +2478,18 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     syncSessionDetailsUI();
 
+    if (sessionStartSaveBtn) {
+        sessionStartSaveBtn.addEventListener('click', handleSessionStartSave);
+    }
+
+    if (sessionStartCancelBtn) {
+        sessionStartCancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            clearAppAlert();
+            closeSessionDetailsModal();
+        });
+    }
+
     if (sdmSaveBtn) {
         sdmSaveBtn.addEventListener('click', handleSessionDetailsSave);
     }
@@ -2190,7 +2497,24 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     if (sdmCancelBtn) {
         sdmCancelBtn.addEventListener('click', (event) => {
             event.preventDefault();
-            closeSessionDetailsModal();
+            prefillSessionDetailsFields();
+            setSessionDetailsEditMode(false);
+            closeSessionToolsDrawer();
+        });
+    }
+
+    if (sessionToolsCloseBtn) {
+        sessionToolsCloseBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeSessionToolsDrawer();
+        });
+    }
+
+    if (sessionToolsDrawer) {
+        sessionToolsDrawer.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeSessionToolsDrawer();
+            }
         });
     }
 
@@ -2211,9 +2535,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     startBtn.addEventListener('click', (event) => {
         if (!sessionDetailsSaved) {
             event.preventDefault();
-            showAppAlert('Save your session details to start the timer.');
-            openSessionDetailsInEditMode = true;
-            expandSessionDetails(event);
+            openSessionDetailsModal(event.currentTarget);
             return;
         }
 
@@ -2270,10 +2592,10 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         hideLogsIfEmpty();
         log("Log list cleared");
 
-        closeModal('log');
-        closeModal('highIdea');
+        closeInlineDrawer('log');
+        closeInlineDrawer('highIdea');
         closeModal('share');
-        closeModal('entertainment');
+        closeInlineDrawer('entertainment');
 
         timerContainer.focus();
         showAppAlert('Session reset. Timer 0 minutes.');
@@ -2347,65 +2669,24 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         },
         sessionDetails: {
             modal: sessionDetailsModal,
+            backdrop: sessionDetailsBackdrop,
             focusFirst: () => {
-                if (isSessionDetailsEditMode && (sdmProductName || sdmMethod || sdmDose)) {
-                    focusElementSafe(sdmProductName || sdmMethod || sdmDose);
+                if (sessionStartProductName) {
+                    focusElementSafe(sessionStartProductName);
                     return;
                 }
-                if (sdmSaveBtn) {
-                    focusElementSafe(sdmSaveBtn);
+                if (sessionStartSaveBtn) {
+                    focusElementSafe(sessionStartSaveBtn);
                 }
             },
-            onOpen: () => prefillSessionDetailsFields(),
+            onOpen: () => {
+                prefillSessionStartFields();
+                activateSessionDetailsFocusState();
+            },
             onClose: () => {
                 sessionDetailsTriggerEl = null;
                 clearAppAlert();
-            },
-            closeOnBackdrop: true,
-        },
-        log: {
-            modal: logModal,
-            backdrop: logBackdrop,
-            focusFirst: () => {
-                const momentTitle = document.getElementById('moment-title');
-                if (momentTitle && typeof momentTitle.focus === 'function') {
-                    try {
-                        momentTitle.focus({ preventScroll: true });
-                    } catch (error) {
-                        momentTitle.focus();
-                    }
-                } else if (momentEffectInput && typeof momentEffectInput.focus === 'function') {
-                    momentEffectInput.focus();
-                }
-            },
-            closeOnBackdrop: true,
-        },
-        highIdea: {
-            modal: highIdeaModal,
-            backdrop: highIdeaBackdrop,
-            focusFirst: () => {
-                const ideaTitle = document.getElementById('idea-title');
-                if (ideaTitle && typeof ideaTitle.focus === 'function') {
-                    try {
-                        ideaTitle.focus({ preventScroll: true });
-                    } catch (error) {
-                        ideaTitle.focus();
-                    }
-                } else if (ideaTextarea && typeof ideaTextarea.focus === 'function') {
-                    ideaTextarea.focus();
-                }
-            },
-            closeOnBackdrop: true,
-        },
-        entertainment: {
-            modal: entertainmentModal,
-            focusFirst: () => {
-                const closeBtn = entertainmentModal.querySelector('.modal-close');
-                if (closeBtn) {
-                    closeBtn.focus();
-                } else {
-                    entertainmentModal.focus();
-                }
+                deactivateSessionDetailsFocusState();
             },
             closeOnBackdrop: true,
         },
@@ -2908,12 +3189,15 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     if (logBtn) {
         logBtn.addEventListener('click', () => {
-            clearAppAlert();
-            if (momentEffectInput) {
-                momentEffectInput.value = '';
-            }
-            openModal('log', logBtn);
-            log('Log Moment modal opened');
+            openInlineDrawer('log', logBtn);
+            log('Log Moment drawer opened');
+        });
+    }
+
+    if (logDrawerCloseBtn) {
+        logDrawerCloseBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeInlineDrawer('log');
         });
     }
 
@@ -2943,7 +3227,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             if (momentEffectInput) {
                 momentEffectInput.value = '';
             }
-            closeModal('log');
+            closeInlineDrawer('log');
             showAppAlert(`Moment logged at ${timeString}.`);
             log(`Log Moment saved: "${momentText}" at ${timeString}`);
         });
@@ -2955,19 +3239,22 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             if (momentEffectInput) {
                 momentEffectInput.value = '';
             }
-            closeModal('log');
-            log('Log Moment modal cancelled.');
+            closeInlineDrawer('log');
+            log('Log Moment drawer cancelled.');
         });
     }
 
     if (highIdeaBtn) {
         highIdeaBtn.addEventListener('click', () => {
-            clearAppAlert();
-            if (ideaTextarea) {
-                ideaTextarea.value = '';
-            }
-            openModal('highIdea', highIdeaBtn);
-            log('High Idea modal opened');
+            openInlineDrawer('highIdea', highIdeaBtn);
+            log('High Idea drawer opened');
+        });
+    }
+
+    if (highIdeaDrawerCloseBtn) {
+        highIdeaDrawerCloseBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeInlineDrawer('highIdea');
         });
     }
 
@@ -3054,7 +3341,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                 ideaTextarea.value = '';
             }
             announce('Idea saved.');
-            closeModal('highIdea');
+            closeInlineDrawer('highIdea');
             showAppAlert(`High idea saved at ${timeString}.`);
             log(`High Idea saved: "${ideaContent}" at ${timeString}`);
         });
@@ -3066,16 +3353,29 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             if (ideaTextarea) {
                 ideaTextarea.value = '';
             }
-            closeModal('highIdea');
-            log('High Idea modal cancelled.');
+            closeInlineDrawer('highIdea');
+            log('High Idea drawer cancelled.');
         });
     }
 
     distractMeBtn.addEventListener('click', () => {
-        openModal('entertainment', distractMeBtn);
+        openInlineDrawer('entertainment', distractMeBtn);
+        log('Entertainment drawer opened.');
     });
 
-    dismissEntertainment.addEventListener('click', () => closeModal('entertainment'));
+    if (entertainmentDrawerCloseBtn) {
+        entertainmentDrawerCloseBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeInlineDrawer('entertainment');
+        });
+    }
+
+    if (dismissEntertainment) {
+        dismissEntertainment.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeInlineDrawer('entertainment');
+        });
+    }
 
     let shareType = 'simple'; 
 
@@ -3095,7 +3395,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     if (sdmShareBtn) {
         sdmShareBtn.addEventListener('click', (event) => {
             event.preventDefault();
-            closeSessionDetailsModal();
+            closeSessionToolsDrawer();
             openShareModal(sdmShareBtn);
         });
     }
@@ -3158,7 +3458,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     if (sdmHistoryBtn) {
         sdmHistoryBtn.addEventListener('click', (event) => {
             event.preventDefault();
-            closeSessionDetailsModal();
+            closeSessionToolsDrawer();
             openSessionHistory(sdmHistoryBtn);
         });
     }
