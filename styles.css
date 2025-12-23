@@ -25,6 +25,16 @@
     --tooltip-color: #fff; /* Default tooltip text */
 }
 
+/* Base document setup to eliminate white gutters */
+html {
+    min-height: 100%;
+    background-color: var(--bg-color);
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 body.light-mode {
     /* Light Mode Variable Overrides */
     --bg-color: #f5f5f5;
@@ -57,6 +67,7 @@ body {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
+    min-height: 100%;
 
     /* Transition background first */
     transition: background-color 0.5s ease, color 0.5s ease;
@@ -678,27 +689,27 @@ button .icon {
 
 .inline-drawer {
     position: relative;
+    top: 1rem;
     max-width: 720px;
     margin: 1rem auto 0;
     background: var(--bt-surface-panel);
     border-radius: 24px 24px 12px 12px;
     border: 1px solid var(--bt-divider-subtle);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-    transform: translateY(1rem);
     opacity: 0;
     pointer-events: none;
-    transition: transform 280ms ease, opacity 280ms ease;
+    transition: top 280ms ease, opacity 280ms ease;
 }
 
 .inline-drawer--open {
-    transform: translateY(0);
+    top: 0;
     opacity: 1;
     pointer-events: auto;
 }
 
 .inline-drawer__header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     padding: 1rem 1.5rem 0.25rem;
 }
@@ -725,6 +736,52 @@ button .icon {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+}
+
+.moment-combobox {
+    position: relative;
+}
+
+.moment-combobox__menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    background: var(--bt-surface-panel);
+    border: 1px solid var(--bt-divider-subtle);
+    border-radius: 14px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.moment-combobox__menu--above {
+    top: auto;
+    bottom: calc(100% + 8px);
+}
+
+.moment-combobox__option {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    color: var(--bt-text-primary);
+    padding: 10px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.moment-combobox__option:hover,
+.moment-combobox__option:focus-visible,
+.moment-combobox__option.is-active {
+    background: var(--bt-surface-hover);
+    outline: none;
 }
 
 .inline-drawer__section {

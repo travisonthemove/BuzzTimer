@@ -3187,6 +3187,247 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     log('Timer and theme logic restored.');
     refreshSessionHistoryUI();
 
+    const setupMomentPresetMenu = () => {
+        if (!momentEffectInput) {
+            return null;
+        }
+        const menu = document.getElementById('momentPresetMenu');
+        if (!menu) {
+            return null;
+        }
+        const wrapper = momentEffectInput.closest('.moment-combobox');
+        if (!wrapper) {
+            return null;
+        }
+
+        const listId = momentEffectInput.getAttribute('list');
+        const dataList = listId ? document.getElementById(listId) : null;
+        if (!dataList) {
+            return null;
+        }
+
+        const presets = Array.from(dataList.querySelectorAll('option'))
+            .map((option) => (option.value || '').trim())
+            .filter(Boolean);
+
+        if (presets.length === 0) {
+            return null;
+        }
+
+        // Disable the native datalist UI (it can render detached / with duplicate callouts in some browsers).
+        momentEffectInput.removeAttribute('list');
+
+        momentEffectInput.setAttribute('role', 'combobox');
+        momentEffectInput.setAttribute('aria-autocomplete', 'list');
+        momentEffectInput.setAttribute('aria-haspopup', 'listbox');
+        momentEffectInput.setAttribute('aria-expanded', 'false');
+        momentEffectInput.setAttribute('aria-controls', menu.id);
+        momentEffectInput.removeAttribute('aria-activedescendant');
+
+        menu.setAttribute('role', 'listbox');
+
+        let isOpen = false;
+        let activeIndex = -1;
+        let currentItems = [];
+
+        const setExpanded = (expanded) => {
+            momentEffectInput.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        };
+
+        const syncActiveOption = () => {
+            const nodes = Array.from(menu.querySelectorAll('.moment-combobox__option'));
+            let activeId = '';
+            nodes.forEach((node, index) => {
+                const isActive = index === activeIndex;
+                node.classList.toggle('is-active', isActive);
+                node.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                if (isActive) {
+                    activeId = node.id || '';
+                    node.scrollIntoView({ block: 'nearest' });
+                }
+            });
+            if (activeId) {
+                momentEffectInput.setAttribute('aria-activedescendant', activeId);
+            } else {
+                momentEffectInput.removeAttribute('aria-activedescendant');
+            }
+        };
+
+        const closeMenu = () => {
+            if (!isOpen) {
+                return;
+            }
+            isOpen = false;
+            activeIndex = -1;
+            currentItems = [];
+            menu.classList.add('hidden');
+            menu.classList.remove('moment-combobox__menu--above');
+            menu.style.maxHeight = '';
+            setExpanded(false);
+            momentEffectInput.removeAttribute('aria-activedescendant');
+        };
+
+        const positionMenu = () => {
+            if (!isOpen) {
+                return;
+            }
+            const rect = momentEffectInput.getBoundingClientRect();
+            const estimatedMenuHeight = 260;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            const openAbove = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+            menu.classList.toggle('moment-combobox__menu--above', openAbove);
+        };
+
+        const selectIndex = (index) => {
+            const nextValue = currentItems[index];
+            if (!nextValue) {
+                return;
+            }
+            closeMenu();
+            momentEffectInput.value = nextValue;
+            focusElementSafe(momentEffectInput);
+        };
+
+        const renderMenu = (items) => {
+            menu.innerHTML = '';
+            currentItems = items;
+            activeIndex = -1;
+            momentEffectInput.removeAttribute('aria-activedescendant');
+            if (items.length === 0) {
+                closeMenu();
+                return;
+            }
+            const normalizedValue = (momentEffectInput.value || '').trim().toLowerCase();
+            const fragment = document.createDocumentFragment();
+            items.forEach((label, index) => {
+                const optionEl = document.createElement('div');
+                optionEl.className = 'moment-combobox__option';
+                optionEl.id = `moment-opt-${index}`;
+                optionEl.setAttribute('role', 'option');
+                optionEl.setAttribute('aria-selected', 'false');
+                optionEl.textContent = label;
+                optionEl.addEventListener('pointerdown', (event) => {
+                    event.preventDefault();
+                    selectIndex(index);
+                });
+                optionEl.addEventListener('pointermove', () => {
+                    if (activeIndex !== index) {
+                        activeIndex = index;
+                        syncActiveOption();
+                    }
+                });
+                fragment.appendChild(optionEl);
+
+                if (normalizedValue && label.toLowerCase() === normalizedValue) {
+                    activeIndex = index;
+                }
+            });
+            menu.appendChild(fragment);
+            syncActiveOption();
+        };
+
+        const openMenu = (query = '') => {
+            const normalizedQuery = (query || '').trim().toLowerCase();
+            const items = normalizedQuery
+                ? presets.filter((label) => label.toLowerCase().includes(normalizedQuery))
+                : presets.slice();
+
+            isOpen = true;
+            menu.classList.remove('hidden');
+            setExpanded(true);
+            renderMenu(items);
+            requestAnimationFrame(positionMenu);
+        };
+
+        momentEffectInput.addEventListener('focus', () => {
+            openMenu(momentEffectInput.value);
+        });
+
+        momentEffectInput.addEventListener('input', () => {
+            openMenu(momentEffectInput.value);
+        });
+
+        momentEffectInput.addEventListener('blur', () => {
+            setTimeout(() => closeMenu(), 0);
+        });
+
+        momentEffectInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeMenu();
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                closeMenu();
+                return;
+            }
+
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter') {
+                return;
+            }
+
+            if (!isOpen) {
+                openMenu(momentEffectInput.value);
+            }
+
+            if (currentItems.length === 0) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                activeIndex = activeIndex < 0 ? 0 : Math.min(activeIndex + 1, currentItems.length - 1);
+                syncActiveOption();
+                return;
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                activeIndex = activeIndex < 0
+                    ? currentItems.length - 1
+                    : (activeIndex === 0 ? currentItems.length - 1 : activeIndex - 1);
+                syncActiveOption();
+                return;
+            }
+
+            if (event.key === 'Enter' && activeIndex >= 0) {
+                event.preventDefault();
+                selectIndex(activeIndex);
+            }
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            if (!isOpen) {
+                return;
+            }
+            if (wrapper.contains(event.target)) {
+                return;
+            }
+            closeMenu();
+        }, true);
+
+        window.addEventListener('resize', () => {
+            closeMenu();
+        }, { passive: true });
+
+        document.addEventListener('scroll', (event) => {
+            if (!isOpen) {
+                return;
+            }
+            if (wrapper.contains(event.target)) {
+                return;
+            }
+            closeMenu();
+        }, { passive: true, capture: true });
+
+        return {
+            close: closeMenu,
+        };
+    };
+
+    const momentPresetMenuController = setupMomentPresetMenu();
+
     if (logBtn) {
         logBtn.addEventListener('click', () => {
             openInlineDrawer('log', logBtn);
@@ -3197,6 +3438,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     if (logDrawerCloseBtn) {
         logDrawerCloseBtn.addEventListener('click', (event) => {
             event.preventDefault();
+            if (momentPresetMenuController) {
+                momentPresetMenuController.close();
+            }
             closeInlineDrawer('log');
         });
     }
@@ -3238,6 +3482,9 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             event.preventDefault();
             if (momentEffectInput) {
                 momentEffectInput.value = '';
+            }
+            if (momentPresetMenuController) {
+                momentPresetMenuController.close();
             }
             closeInlineDrawer('log');
             log('Log Moment drawer cancelled.');

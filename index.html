@@ -431,28 +431,36 @@
       <div class="inline-drawer__content">
         <form id="moment-form" novalidate>
           <label for="moment-effect">Enter or select an effect</label>
-          <input id="moment-effect"
-                 type="text"
-                 name="momentEffect"
-                 list="moment-presets"
-                 autocomplete="off"
-                 placeholder="Custom moment or select...">
-          <datalist id="moment-presets">
-            <option value="Mellow Relaxation"></option>
-            <option value="Euphoric Giddiness"></option>
-            <option value="Creative Spark"></option>
-            <option value="Heightened Focus"></option>
-            <option value="Mindful Reflection"></option>
-            <option value="Sensory Boost"></option>
-            <option value="Cozy Couch-Lock"></option>
-            <option value="Uplifting Energy"></option>
-            <option value="Taste Explorer (Munchies)"></option>
-            <option value="Tranquil Sleepiness"></option>
-            <option value="Nervous Heart Palpitations"></option>
-            <option value="Waves of Panic"></option>
-            <option value="Paranoid Thoughts"></option>
-            <option value="Indescribable Sparkly Stillness"></option>
-          </datalist>
+          <div class="moment-combobox">
+            <input id="moment-effect"
+                   type="text"
+                   name="momentEffect"
+                   list="moment-presets"
+                   autocomplete="off"
+                   role="combobox"
+                   aria-autocomplete="list"
+                   aria-haspopup="listbox"
+                   aria-expanded="false"
+                   aria-controls="momentPresetMenu"
+                   placeholder="Custom moment or select...">
+            <div id="momentPresetMenu" class="moment-combobox__menu hidden" role="listbox" aria-label="Moment presets"></div>
+            <datalist id="moment-presets">
+              <option value="Mellow Relaxation"></option>
+              <option value="Euphoric Giddiness"></option>
+              <option value="Creative Spark"></option>
+              <option value="Heightened Focus"></option>
+              <option value="Mindful Reflection"></option>
+              <option value="Sensory Boost"></option>
+              <option value="Cozy Couch-Lock"></option>
+              <option value="Uplifting Energy"></option>
+              <option value="Taste Explorer (Munchies)"></option>
+              <option value="Tranquil Sleepiness"></option>
+              <option value="Nervous Heart Palpitations"></option>
+              <option value="Waves of Panic"></option>
+              <option value="Paranoid Thoughts"></option>
+              <option value="Indescribable Sparkly Stillness"></option>
+            </datalist>
+          </div>
           <div class="modal__actions drawer-actions">
             <button type="button" class="btn secondary" id="moment-cancel">Cancel</button>
             <button type="submit" class="btn primary">Save moment</button>
