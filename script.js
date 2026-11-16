@@ -37,10 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     const readStorageFlag = () => {
-        if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
-            return null;
-        }
         try {
+            if (typeof window === 'undefined' || !window.localStorage) return null;
             return coerceExplicitFlag(window.localStorage.getItem('bt:dev'));
         } catch (storageError) {
             return null;
@@ -306,12 +304,14 @@ const themeNames = {
     const activeThemeText = document.getElementById('activeThemeText');
 activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     // 1) Tippy.js Initialization (new)
-    tippy('[data-tippy-content]', {
-        theme: 'buzz',
-        animation: 'scale',
-        duration: [200, 150],
-        placement: 'top'
-    });
+    if (typeof window.tippy === 'function') {
+        window.tippy('[data-tippy-content]', {
+            theme: 'buzz',
+            animation: 'scale',
+            duration: [200, 150],
+            placement: 'top'
+        });
+    }
 
     // Timer Variables
     let sessionDetailsSaved = false;
@@ -357,7 +357,22 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         return clampNumber(value, 0, MAX_SESSION_HISTORY);
     };
 
-    const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+    const reportStorageFailure = () => {
+        if (document.getElementById('storageWarning')) return;
+        const notice = document.createElement('p');
+        notice.id = 'storageWarning';
+        notice.setAttribute('role', 'status');
+        notice.textContent = 'Browser storage is unavailable. Changes may not survive a reload. Export saved history if available before closing this page.';
+        (appContent || appRoot).prepend(notice);
+    };
+
+    const canUseStorage = () => {
+        try {
+            if (typeof window !== 'undefined' && window.localStorage) return true;
+        } catch { /* Storage can be denied by browser privacy settings. */ }
+        reportStorageFailure();
+        return false;
+    };
 
     const safeStorageGet = (key) => {
         if (!canUseStorage()) {
@@ -366,6 +381,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             return window.localStorage.getItem(key);
         } catch (error) {
+            reportStorageFailure();
             warn('BuzzTimer: unable to read storage key', key, error);
             return null;
         }
@@ -378,6 +394,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             window.localStorage.setItem(key, value);
         } catch (error) {
+            reportStorageFailure();
             warn('BuzzTimer: unable to persist storage key', key, error);
         }
     };
@@ -389,6 +406,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         try {
             window.localStorage.removeItem(key);
         } catch (error) {
+            reportStorageFailure();
             warn('BuzzTimer: unable to remove storage key', key, error);
         }
     };
@@ -594,67 +612,6 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             ].join(':');
         }
         return `${minutes}:${String(seconds).padStart(2, '0')}`;
-    };
-
-    const sanitizeHtml = (html) => {
-        if (!html || typeof html !== 'string') {
-            return '';
-        }
-        const template = document.createElement('template');
-        template.innerHTML = html;
-        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'UL', 'OL', 'LI', 'P', 'A']);
-
-        const cleanNode = (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                return;
-            }
-            if (node.nodeType !== Node.ELEMENT_NODE) {
-                node.remove();
-                return;
-            }
-            if (!allowedTags.has(node.tagName)) {
-                const parent = node.parentNode;
-                if (parent) {
-                    while (node.firstChild) {
-                        parent.insertBefore(node.firstChild, node);
-                    }
-                    parent.removeChild(node);
-                } else {
-                    node.remove();
-                }
-                return;
-            }
-            Array.from(node.attributes).forEach((attr) => {
-                if (node.tagName === 'A' && attr.name.toLowerCase() === 'href') {
-                    try {
-                        const url = new URL(node.getAttribute(attr.name), window.location.origin);
-                        if (!['http:', 'https:'].includes(url.protocol)) {
-                            node.removeAttribute(attr.name);
-                        } else {
-                            node.setAttribute('target', '_blank');
-                            node.setAttribute('rel', 'noopener noreferrer');
-                        }
-                    } catch (error) {
-                        node.removeAttribute(attr.name);
-                    }
-                } else {
-                    node.removeAttribute(attr.name);
-                }
-            });
-            Array.from(node.childNodes).forEach(cleanNode);
-        };
-
-        Array.from(template.content.childNodes).forEach(cleanNode);
-        return template.innerHTML;
-    };
-
-    const toPlainText = (html) => {
-        if (!html) {
-            return '';
-        }
-        const template = document.createElement('template');
-        template.innerHTML = html;
-        return template.textContent?.trim() || '';
     };
 
     let sessionStartTimestamp = null;
@@ -1419,7 +1376,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     const TIMER_STORAGE_KEY = 'buzzTimer.state';
 
     const persistTimerState = (overrides = {}) => {
-        if (typeof window === 'undefined' || !window.localStorage) {
+        if (!canUseStorage()) {
             return;
         }
         try {
@@ -1432,12 +1389,13 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             const stateToPersist = { ...baseState, ...overrides };
             window.localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(stateToPersist));
         } catch (error) {
+            reportStorageFailure();
             warn('BuzzTimer: unable to persist timer state', error);
         }
     };
 
     const restoreTimerState = () => {
-        if (typeof window === 'undefined' || !window.localStorage) {
+        if (!canUseStorage()) {
             return false;
         }
         try {
@@ -1469,6 +1427,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             persistTimerState();
             return true;
         } catch (error) {
+            reportStorageFailure();
             warn('BuzzTimer: unable to restore timer state', error);
             return false;
         }
@@ -2201,6 +2160,8 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         if (!config || !config.drawer) {
             return;
         }
+        // Reopening must cancel a previous close animation's delayed callback.
+        if (config.cancelClose) config.cancelClose();
         if (activeInlineDrawerKey && activeInlineDrawerKey !== key) {
             closeInlineDrawer(activeInlineDrawerKey);
         }
@@ -2212,6 +2173,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         drawer.classList.remove('hidden');
         drawer.setAttribute('aria-hidden', 'false');
         requestAnimationFrame(() => {
+            if (activeInlineDrawerKey !== key) return;
             drawer.classList.add('inline-drawer--open');
             if (typeof onOpen === 'function') {
                 onOpen();
@@ -2229,34 +2191,41 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
 
     const closeInlineDrawer = (key) => {
         const config = getInlineDrawerConfig(key);
-        if (!config || !config.drawer) {
+        if (!config || !config.drawer || config.cancelClose) {
             return;
         }
         const { drawer, onClose, trigger } = config;
-        const finalizeClose = () => {
-            drawer.classList.add('hidden');
+        let finished = false;
+        let closeTimer;
+        const cancelClose = () => {
+            finished = true;
+            clearTimeout(closeTimer);
             drawer.removeEventListener('transitionend', finalizeClose);
-            if (trigger && typeof trigger.focus === 'function') {
+            config.cancelClose = null;
+        };
+        const finalizeClose = (event) => {
+            if (finished || (event && event.target !== drawer)) return;
+            const restoreFocus = !activeInlineDrawerKey && openModals.size === 0
+                && (drawer.contains(document.activeElement) || document.activeElement === document.body);
+            cancelClose();
+            drawer.classList.add('hidden');
+            if (restoreFocus && trigger && typeof trigger.focus === 'function') {
                 trigger.focus();
             }
             config.trigger = null;
-            if (activeInlineDrawerKey === key) {
-                activeInlineDrawerKey = null;
-            }
             syncInlineDrawerStateClass();
         };
+        config.cancelClose = cancelClose;
+        if (activeInlineDrawerKey === key) activeInlineDrawerKey = null;
+        drawer.setAttribute('aria-hidden', 'true');
+        if (typeof onClose === 'function') onClose();
         if (!drawer.classList.contains('inline-drawer--open')) {
             finalizeClose();
-            drawer.setAttribute('aria-hidden', 'true');
             return;
         }
         drawer.classList.remove('inline-drawer--open');
-        drawer.addEventListener('transitionend', finalizeClose, { once: true });
-        setTimeout(finalizeClose, 360);
-        drawer.setAttribute('aria-hidden', 'true');
-        if (typeof onClose === 'function') {
-            onClose();
-        }
+        drawer.addEventListener('transitionend', finalizeClose);
+        closeTimer = setTimeout(finalizeClose, 360);
     };
 
     document.addEventListener('pointerdown', (event) => {
@@ -3473,7 +3442,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             }
             closeInlineDrawer('log');
             showAppAlert(`Moment logged at ${timeString}.`);
-            log(`Log Moment saved: "${momentText}" at ${timeString}`);
+            log('Log Moment saved');
         });
     }
 
@@ -3590,7 +3559,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
             announce('Idea saved.');
             closeInlineDrawer('highIdea');
             showAppAlert(`High idea saved at ${timeString}.`);
-            log(`High Idea saved: "${ideaContent}" at ${timeString}`);
+            log('High Idea saved');
         });
     }
 
@@ -3624,7 +3593,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
         });
     }
 
-    let shareType = 'simple'; 
+    let shareType = 'simple';
 
     const openShareModal = (triggerEl) => {
         clearShareFeedback();
@@ -3670,7 +3639,7 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
                     }
                 }
             }
-            window.open(shareUrl, '_blank');
+            window.open(shareUrl, '_blank', 'noopener,noreferrer');
         });
     }
 
@@ -3787,13 +3756,13 @@ activeThemeText.textContent = `Active Theme: ${themeNames[currentSkin]}`;
     shareTwitter.addEventListener('click', () => {
         const message = sharePreview.textContent.trim();
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener,noreferrer');
     });
 
     shareFacebook.addEventListener('click', () => {
         const message = sharePreview.textContent.trim();
         const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener,noreferrer');
     });
 
     copyLink.addEventListener('click', () => {

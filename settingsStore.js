@@ -94,12 +94,14 @@
     };
 
     const getDefaultStorage = () => {
-        if (typeof window !== 'undefined' && window.localStorage) {
-            return window.localStorage;
-        }
-        if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
-            return globalThis.localStorage;
-        }
+        try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+                return window.localStorage;
+            }
+            if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+                return globalThis.localStorage;
+            }
+        } catch { /* The property getter itself can throw when storage is denied. */ }
         return null;
     };
 

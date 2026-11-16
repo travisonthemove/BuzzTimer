@@ -1,0 +1,39 @@
+# Dependencies and local tooling
+node_modules/
+.codex_tmp/
+.metadata/
+.project
+.classpath
+.settings/
+.idea/
+.vscode/
+
+# Test output, caches, and local backups
+test-results/
+playwright-report/
+coverage/
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+backups/
+.cache/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.npmrc
+.netrc
+.aws/
+credentials*.json
+tokens*.json
+buzz-timer-history*.json
+buzz-timer-session-*.json
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini

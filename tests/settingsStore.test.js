@@ -50,4 +50,22 @@ assert.strictEqual(
     'theme should fall back to default when unknown'
 );
 
-console.log('settingsStore tests passed');
+// Privacy settings can deny the localStorage getter before getItem is called.
+const fs = require('node:fs');
+const vm = require('node:vm');
+const deniedWindow = {};
+Object.defineProperty(deniedWindow, 'localStorage', {
+    get() { throw new Error('Storage denied'); },
+});
+const isolated = { module: { exports: {} }, window: deniedWindow };
+vm.runInNewContext(fs.readFileSync(require.resolve('../settingsStore.js'), 'utf8'), isolated);
+assert.strictEqual(isolated.module.exports.loadSettings().theme, 'classic');
+assert.strictEqual(isolated.module.exports.saveSettings({ theme: 'retro' }).theme, 'retro');
+
+const failingStorage = {
+    getItem() { throw new Error('Read denied'); },
+    setItem() { throw new Error('Quota exceeded'); },
+};
+assert.strictEqual(loadSettings(failingStorage).theme, 'classic');
+assert.doesNotThrow(() => saveSettings(updatedSettings, failingStorage));
+console.log('settingsStore tests passed, including denied storage');
