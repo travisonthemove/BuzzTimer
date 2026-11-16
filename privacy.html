@@ -2,20 +2,19 @@
 <html lang="en" data-env="production">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
   <meta name="buzz:env" content="production">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BuzzTimer &ndash; Privacy</title>
 
-  <!-- Popper.js (required by Tippy) -->
-  <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
-  <!-- Tippy.js (the main library) -->
-  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+
 
   <!-- Add Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-    
+
   <link rel="stylesheet" href="styles.css">
   <style>
     body {
@@ -37,20 +36,21 @@
 
       <ul class="content-list">
         <li>
-          <p>No accounts, no social features.</p>
+          <p>No account is required.</p>
           <p>You don&rsquo;t need a login to use BuzzTimer. It&rsquo;s built as a single-page web app.</p>
         </li>
         <li>
-          <p>Data stays on your device.</p>
-          <p>Session logs, notes, and settings are stored in your browser (for example, using local storage). The app does not maintain a central database of your entries, and your data is not sold.</p>
+          <p>Browser storage and its limits.</p>
+          <p>Settings, timer state, session details, and archived session history are kept in this browser&rsquo;s local storage. There is no BuzzTimer server database or cloud backup. Current moments and ideas are kept in memory until the session is archived on Reset; reloading before that can lose those entries. Export important history before clearing browser data or changing devices.</p>
+          <p>This storage is not encrypted by BuzzTimer. Someone with access to your browser profile, or other code on the same website origin, may be able to read it. Private browsing, storage restrictions, or browser cleanup can prevent saving or remove saved data.</p>
         </li>
         <li>
-          <p>No targeted ads or hidden third-party trackers in the core app experience.</p>
-          <p>BuzzTimer isn&rsquo;t built around ad tech. If this ever changes, this page will be updated before any new tracking goes live.</p>
+          <p>Hosting and font requests.</p>
+          <p>The app code does not send journal entries to an analytics service. GitHub Pages serves the site, and Google Fonts supplies the typeface; those services receive ordinary connection information such as your IP address. Tooltip scripts are served with the app rather than loaded from a third-party script host. The app still works if font requests fail.</p>
         </li>
         <li>
           <p>What you write is for you.</p>
-          <p>Your sessions, moments, and ideas are meant for your own reflection. If you share screenshots or export anything, remember you&rsquo;re the one choosing where that information goes.</p>
+          <p>Sharing, copying, screenshots, and exported files can disclose your entries. Review the sharing preview before sending it: Detailed Share can include the product name and logged moments. Choosing a social sharing button or an entertainment link opens another service with its own privacy practices.</p>
         </li>
       </ul>
 

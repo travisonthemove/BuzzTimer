@@ -1,11 +1,21 @@
 {
+  "name": "buzztimer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A browser-based session timer and personal journal.",
   "scripts": {
+    "test": "node tests/settingsStore.test.js && node scripts/tests/timer-tests.js",
+    "test:browser": "playwright test",
+    "check:repository": "node tools/check-repository.js",
+    "vendor:sync": "node tools/vendor-runtime.js",
+    "vendor:check": "node tools/vendor-runtime.js --check",
     "snapshots": "node tools/ui-snapshots.js"
   },
   "dependencies": {
-    "tippy.js": "^6.3.7"
+    "@popperjs/core": "2.11.8",
+    "tippy.js": "6.3.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1"
+    "@playwright/test": "1.56.1"
   }
 }

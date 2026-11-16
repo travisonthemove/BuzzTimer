@@ -2,20 +2,21 @@
 <html lang="en" data-env="production">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
   <meta name="buzz:env" content="production">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BuzzTimer - Track your buzz like a pro</title>
 
-  <!-- Popper.js (required by Tippy) -->
-  <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
-  <!-- Tippy.js (the main library) -->
-  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+  <!-- Locked, same-origin tooltip libraries; see static/vendor/README.md. -->
+  <script src="static/vendor/popper-2.11.8.min.js" defer></script>
+  <script src="static/vendor/tippy-6.3.7.min.js" defer></script>
 
   <!-- Add Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-    
+
   <link rel="stylesheet" href="styles.css">
   <style>
     body {
@@ -30,15 +31,15 @@
     <div id="appAlerts" class="status-message" aria-live="polite"></div>
     <div class="app-container">
       <div class="masthead">
-        <img src="static/icons/logo.svg" alt="BuzzTimer Logo" 
+        <img src="static/icons/logo.svg" alt="BuzzTimer Logo"
              style="width: 60px; height: 60px; margin: 0 auto; display: block;">
         <p class="brand-title">BuzzTimer</p>
         <h1>Session Timer</h1>
         <p class="tagline">Elevate your journey</p>
       </div>
       <p>
-      Whether fine-tuning your mindfulness practice or exploring the effects of different strains, 
-      BuzzTimer gives you the tools to log your progress, track your insights, and elevate your 
+      Whether fine-tuning your mindfulness practice or exploring the effects of different strains,
+      BuzzTimer gives you the tools to log your progress, track your insights, and elevate your
       cannabis journey with purpose.
       </p>
 
@@ -123,7 +124,7 @@
             <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor" />
           </svg>
         </button>
-  
+
         <!-- Reset Button -->
         <button id="resetBtn"
                 type="button"
@@ -139,7 +140,7 @@
 
       <!-- Timer Section -->
       <div class="timer-container" id="timerContainer" tabindex="-1">
-        <img src="static/skins/classic.svg" alt="Timer Skin" 
+        <img src="static/skins/classic.svg" alt="Timer Skin"
              class="timer-skin" id="timerSkin">
         <div class="timer-display" id="timer">00:00</div>
         <div id="timer-status" class="sr-only" aria-live="polite"></div>
@@ -509,15 +510,15 @@
       </div>
       <div class="inline-drawer__content">
         <div class="entertainment-links">
-          <a href="https://highdeas.com/" target="_blank" class="entertainment-link">
+          <a href="https://highdeas.com/" target="_blank" rel="noopener noreferrer" class="entertainment-link">
             <h4>HighDeas</h4>
             <p>Share and explore creative thoughts and ideas from the community.</p>
           </a>
-          <a href="https://radio.garden/visit/whitesburg-ky/kDMlR3nu" target="_blank" class="entertainment-link">
+          <a href="https://radio.garden/visit/whitesburg-ky/kDMlR3nu" target="_blank" rel="noopener noreferrer" class="entertainment-link">
             <h4>Radio Garden</h4>
             <p>Explore live radio stations from around the globe on an interactive 3D Earth.</p>
           </a>
-          <a href="https://permadi.com/java/spaint/spaint.html#google_vignette" target="_blank" class="entertainment-link">
+          <a href="https://permadi.com/java/spaint/spaint.html#google_vignette" target="_blank" rel="noopener noreferrer" class="entertainment-link">
             <h4>Kaleidoscope Painter</h4>
             <p>Create mesmerizing kaleidoscopic art with this interactive painting tool.</p>
           </a>
